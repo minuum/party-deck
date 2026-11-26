@@ -55,16 +55,22 @@
     <!-- WAITING ROOM (MULTIPLAYER LOBBY) -->
     <section id="screen-lobby" class="screen">
       <div class="lobby-top">
-        <div class="eyebrow">MULTIPLAYER LOBBY</div>
-        <h2>초대 코드 <span id="lobby-code" class="gold-text">----</span></h2>
-        <p class="muted">같은 Wi-Fi에 연결된 친구에게 링크나 코드를 공유하세요</p>
-        <button id="btn-copy-link" class="btn btn-outline btn-sm">🔗 초대 링크 복사</button>
+        <div id="lobby-role-banner" class="role-banner host">👑 내가 방장입니다</div>
+        <div class="room-code-box">
+          <span class="room-code-label">방 초대 코드</span>
+          <div id="lobby-code" class="room-code-val">----</div>
+        </div>
+        <p id="lobby-sub-msg" class="muted">친구에게 코드나 초대 링크를 공유하세요</p>
+        <div class="lobby-share-row">
+          <button id="btn-copy-code" class="btn btn-dark btn-sm">📋 코드 복사</button>
+          <button id="btn-copy-link" class="btn btn-outline btn-sm">🔗 초대 링크 복사</button>
+        </div>
       </div>
 
       <div class="glass-card">
         <div class="lobby-players-head">
-          <span>참가자 (<span id="lobby-count">1</span>/5)</span>
-          <span class="muted">최소 2명 이상</span>
+          <span>참가자 현황 (<span id="lobby-count">1</span>/5)</span>
+          <span class="muted">최대 5인 · 빈자리는 AI 가능</span>
         </div>
         <ul id="lobby-player-list" class="lobby-list"></ul>
       </div>
@@ -74,10 +80,16 @@
           <input type="checkbox" id="chk-fill-ai" checked />
           <span>빈자리를 AI 봇으로 채우기 (5인 풀방)</span>
         </label>
-        <button id="btn-start-multi" class="btn btn-gold btn-lg">게임 시작하기</button>
+        <button id="btn-start-multi" class="btn btn-gold btn-lg">🚀 게임 시작하기</button>
+        <div id="host-start-hint" class="muted center-text hidden">친구가 입장하거나 AI 채우기를 켜면 시작할 수 있어요</div>
       </div>
-      <div id="guest-wait-msg" class="muted center-text hidden">방장이 게임을 시작하기를 기다리는 중...</div>
-      <button id="btn-leave-lobby" class="link-btn">나가기</button>
+      <div id="guest-wait-msg" class="guest-wait-card hidden">
+        <div class="pulse-dot"></div>
+        <div>
+          <strong id="guest-host-name">방장</strong>님이 게임을 시작하기를 기다리는 중...
+        </div>
+      </div>
+      <button id="btn-leave-lobby" class="link-btn">방 나가기</button>
     </section>
 
     <!-- GAME TABLE SCREEN -->

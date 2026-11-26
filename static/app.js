@@ -140,18 +140,57 @@ function render() {
 
   if (state.phase === "LOBBY") {
     showScreen("lobby");
+    const isHost = state.viewer_id === state.host_id;
+    const hostPlayer = state.players.find((p) => p.id === state.host_id);
+
+    const roleBanner = $("lobby-role-banner");
+    roleBanner.className = "role-banner " + (isHost ? "host" : "guest");
+    roleBanner.textContent = isHost ? "👑 내가 방장입니다" : "🎟️ 초대받은 참가자";
+
     $("lobby-code").textContent = state.room_id;
+    $("lobby-sub-msg").textContent = isHost
+      ? "친구에게 아래 코드나 초대 링크를 보내서 초대하세요!"
+      : `${hostPlayer ? hostPlayer.name : "방장"}님의 멀티플레이 방에 입장했습니다.`;
     $("lobby-count").textContent = state.players.length;
+
     const list = $("lobby-player-list");
     list.innerHTML = "";
     state.players.forEach((p) => {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${p.name} ${p.id === state.host_id ? "👑" : ""}</span><span class="muted">${p.chips}칩</span>`;
+      const pIsHost = p.id === state.host_id;
+      const pIsMe = p.id === state.viewer_id;
+      if (pIsMe) li.classList.add("is-me");
+      li.innerHTML = `
+        <div class="lobby-left">
+          <span class="role-pill ${pIsHost ? "host" : "guest"}">${pIsHost ? "👑 방장" : "🎟️ 참가자"}</span>
+          <span>${p.name}</span>
+          ${pIsMe ? '<span class="role-pill me">나</span>' : ""}
+        </div>
+        <span class="muted">🪙 ${p.chips}칩</span>
+      `;
       list.appendChild(li);
     });
-    const isHost = state.viewer_id === state.host_id;
+
+    // Empty slots up to 5
+    const fillAi = $("chk-fill-ai") ? $("chk-fill-ai").checked : true;
+    for (let i = state.players.length; i < 5; i++) {
+      const li = document.createElement("li");
+      li.className = "empty-slot";
+      li.innerHTML = `<span>빈 자리 #${i + 1}</span><span>${fillAi ? "🤖 시작 시 AI 자동 배정" : "초대 대기 중..."}</span>`;
+      list.appendChild(li);
+    }
+
     $("host-controls").classList.toggle("hidden", !isHost);
     $("guest-wait-msg").classList.toggle("hidden", isHost);
+    if (!isHost && hostPlayer) {
+      $("guest-host-name").textContent = `👑 ${hostPlayer.name}`;
+    }
+
+    if (isHost) {
+      const canStart = state.players.length >= 2 || fillAi;
+      $("btn-start-multi").disabled = !canStart;
+      $("host-start-hint").classList.toggle("hidden", canStart);
+    }
     return;
   }
 
@@ -400,11 +439,21 @@ $("btn-start-multi").onclick = () => {
   sendAction({ type: "start_multi", fill_ai: $("chk-fill-ai").checked });
 };
 
+$("btn-copy-code").onclick = () => {
+  navigator.clipboard?.writeText(state.room_id);
+  $("btn-copy-code").textContent = "✅ 코드 복사됨!";
+  setTimeout(() => ($("btn-copy-code").textContent = "📋 코드 복사"), 2000);
+};
+
 $("btn-copy-link").onclick = () => {
   const url = `${location.origin}/?room=${state.room_id}`;
   navigator.clipboard?.writeText(url);
   $("btn-copy-link").textContent = "✅ 링크 복사됨!";
   setTimeout(() => ($("btn-copy-link").textContent = "🔗 초대 링크 복사"), 2000);
+};
+
+$("chk-fill-ai").onchange = () => {
+  if (state && state.phase === "LOBBY") render();
 };
 
 $("btn-counter").onclick = () => {
