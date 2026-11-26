@@ -41,7 +41,13 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v1.7 <span>방금 전</span></div>
+          <div class="patch-ver">v1.8 <span>방금 전</span></div>
+          <ul>
+            <li><strong>AI 인원 자유 선택</strong> (1인 플레이: AI 1~4명 선택, 멀티 대기실: 방장이 AI 1명씩 추가/제거 가능)</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v1.7</div>
           <ul>
             <li><strong>한계 숫자(5~12)</strong>가 <strong>매 라운드마다</strong> 주사위로 새로 결정되도록 변경</li>
           </ul>
@@ -118,9 +124,19 @@
           <small id="resume-meta">방 코드 ---- · R1</small>
         </button>
 
+        <div class="chips-row">
+          <span class="field-label" style="margin:0;">1인전 AI 수</span>
+          <div class="seg-group" id="ai-count-group">
+            <button type="button" class="seg-btn ai-seg" data-ai="1">1명</button>
+            <button type="button" class="seg-btn ai-seg" data-ai="2">2명</button>
+            <button type="button" class="seg-btn ai-seg" data-ai="3">3명</button>
+            <button type="button" class="seg-btn ai-seg active" data-ai="4">4명</button>
+          </div>
+        </div>
+
         <button id="btn-solo" class="btn btn-gold btn-lg">
           <span>🤖 1인 플레이</span>
-          <small>AI 4명과 즉시 대결</small>
+          <small id="solo-sub-label">AI 4명과 즉시 대결 (총 5인)</small>
         </button>
 
         <div class="divider"><span>또는 친구와 함께</span></div>
@@ -165,12 +181,12 @@
       </div>
 
       <div id="host-controls" class="lobby-actions hidden">
-        <label class="toggle-row">
-          <input type="checkbox" id="chk-fill-ai" checked />
-          <span>빈자리를 AI 봇으로 채우기 (5인 풀방)</span>
-        </label>
+        <div class="ai-manage-row">
+          <button type="button" id="btn-add-ai" class="btn btn-outline btn-sm" style="flex:1;margin:0;">🤖 AI +1 추가</button>
+          <button type="button" id="btn-remove-ai" class="btn btn-dark btn-sm" style="flex:1;margin:0;">AI -1 빼기</button>
+        </div>
         <button id="btn-start-multi" class="btn btn-gold btn-lg">🚀 게임 시작하기</button>
-        <div id="host-start-hint" class="muted center-text hidden">친구가 입장하거나 AI 채우기를 켜면 시작할 수 있어요</div>
+        <div id="host-start-hint" class="muted center-text hidden">친구를 초대하거나 AI를 1명 이상 추가해 주세요 (최소 2인)</div>
       </div>
       <div id="guest-wait-msg" class="guest-wait-card hidden">
         <div class="pulse-dot"></div>

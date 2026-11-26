@@ -14,6 +14,7 @@ let pollTimer = null;
 let pollInFlight = false;
 let creating = false;
 let selectedChips = 30;
+let selectedAiCount = 4;
 let roomId = sessionStorage.getItem("hs_room") || "";
 let playerId = sessionStorage.getItem("hs_pid") || "";
 
@@ -38,11 +39,22 @@ if (urlParams.get("room")) {
 }
 
 // Chip selector
-document.querySelectorAll(".seg-btn").forEach((btn) => {
+document.querySelectorAll(".seg-btn[data-chips]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".seg-btn[data-chips]").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     selectedChips = parseInt(btn.dataset.chips, 10);
+  });
+});
+
+// AI count selector for Solo mode
+document.querySelectorAll(".ai-seg").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".ai-seg").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedAiCount = parseInt(btn.dataset.ai, 10);
+    const lbl = $("solo-sub-label");
+    if (lbl) lbl.textContent = `AI ${selectedAiCount}명과 즉시 대결 (총 ${selectedAiCount + 1}인)`;
   });
 });
 
@@ -56,7 +68,7 @@ async function createRoom(mode) {
     const res = await fetch("/api/create_room", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, mode, chips: selectedChips }),
+      body: JSON.stringify({ name, mode, chips: selectedChips, ai_count: selectedAiCount }),
     });
     const data = await res.json().catch(() => ({ error: `서버 오류 (${res.status})` }));
     if (!res.ok || data.error) return showError(data.error || "방 생성 실패");
@@ -178,23 +190,31 @@ function render() {
       const pIsHost = p.id === state.host_id;
       const pIsMe = p.id === state.viewer_id;
       if (pIsMe) li.classList.add("is-me");
+      const roleCls = pIsHost ? "host" : (p.is_ai ? "ai" : "guest");
+      const roleTxt = pIsHost ? "👑 방장" : (p.is_ai ? "🤖 AI" : "🎟️ 참가자");
+      const kickHtml = isHost && p.is_ai ? `<button type="button" class="ai-kick-btn" data-aid="${p.id}">제거</button>` : "";
       li.innerHTML = `
         <div class="lobby-left">
-          <span class="role-pill ${pIsHost ? "host" : "guest"}">${pIsHost ? "👑 방장" : "🎟️ 참가자"}</span>
+          <span class="role-pill ${roleCls}">${roleTxt}</span>
           <span>${p.name}</span>
           ${pIsMe ? '<span class="role-pill me">나</span>' : ""}
         </div>
-        <span class="muted">🪙 ${p.chips}칩</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="muted">🪙 ${p.chips}칩</span>
+          ${kickHtml}
+        </div>
       `;
       list.appendChild(li);
     });
+    list.querySelectorAll(".ai-kick-btn").forEach((btn) => {
+      btn.onclick = () => sendAction({ type: "remove_ai", target_id: btn.dataset.aid });
+    });
 
     // Empty slots up to 5
-    const fillAi = $("chk-fill-ai") ? $("chk-fill-ai").checked : true;
     for (let i = state.players.length; i < 5; i++) {
       const li = document.createElement("li");
       li.className = "empty-slot";
-      li.innerHTML = `<span>빈 자리 #${i + 1}</span><span>${fillAi ? "🤖 시작 시 AI 자동 배정" : "초대 대기 중..."}</span>`;
+      li.innerHTML = `<span>빈 자리 #${i + 1}</span><span>초대 또는 AI 추가 가능</span>`;
       list.appendChild(li);
     }
 
@@ -205,7 +225,10 @@ function render() {
     }
 
     if (isHost) {
-      const canStart = state.players.length >= 2 || fillAi;
+      const hasAi = state.players.some((p) => p.is_ai);
+      $("btn-add-ai").disabled = state.players.length >= 5;
+      $("btn-remove-ai").disabled = !hasAi;
+      const canStart = state.players.length >= 2;
       $("btn-start-multi").disabled = !canStart;
       $("host-start-hint").classList.toggle("hidden", canStart);
     }
@@ -458,8 +481,10 @@ $("btn-join").onclick = joinRoom;
 $("btn-leave-lobby").onclick = leaveRoom;
 $("btn-exit-game").onclick = leaveRoom;
 
+$("btn-add-ai").onclick = () => sendAction({ type: "add_ai" });
+$("btn-remove-ai").onclick = () => sendAction({ type: "remove_ai" });
 $("btn-start-multi").onclick = () => {
-  sendAction({ type: "start_multi", fill_ai: $("chk-fill-ai").checked });
+  sendAction({ type: "start_multi", fill_ai: false });
 };
 
 $("btn-copy-code").onclick = () => {
@@ -473,10 +498,6 @@ $("btn-copy-link").onclick = () => {
   navigator.clipboard?.writeText(url);
   $("btn-copy-link").textContent = "✅ 링크 복사됨!";
   setTimeout(() => ($("btn-copy-link").textContent = "🔗 초대 링크 복사"), 2000);
-};
-
-$("chk-fill-ai").onchange = () => {
-  if (state && state.phase === "LOBBY") render();
 };
 
 $("btn-counter").onclick = () => {

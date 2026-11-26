@@ -364,24 +364,37 @@ class GameRoom:
             "viewer_id": viewer_id,
         }
 
-    def fill_ai_bots(self):
+    def add_one_ai(self) -> bool:
+        if len(self.players) >= 5:
+            return False
         bot_names = ["VIPER", "NOVA", "KRONOS", "ORION", "ZEPHYR"]
         existing_names = {p.name for p in self.players}
-        idx = 1
-        for bname in bot_names:
-            if len(self.players) >= 5:
-                break
-            if bname in existing_names:
-                continue
-            self.players.append(
-                Player(
-                    id=f"ai_{idx}_{random.randint(100,999)}",
-                    name=bname,
-                    is_ai=True,
-                    chips=self.starting_chips,
+        for idx, bname in enumerate(bot_names, start=1):
+            if bname not in existing_names:
+                self.players.append(
+                    Player(
+                        id=f"ai_{idx}_{random.randint(100,999)}",
+                        name=bname,
+                        is_ai=True,
+                        chips=self.starting_chips,
+                    )
                 )
-            )
-            idx += 1
+                return True
+        return False
+
+    def remove_ai(self, ai_id: Optional[str] = None) -> bool:
+        for i in range(len(self.players) - 1, -1, -1):
+            p = self.players[i]
+            if p.is_ai and (ai_id is None or p.id == ai_id):
+                self.players.pop(i)
+                return True
+        return False
+
+    def fill_ai_bots(self, count: Optional[int] = None):
+        target_total = 5 if count is None else min(5, len(self.players) + max(0, count))
+        while len(self.players) < target_total:
+            if not self.add_one_ai():
+                break
 
     def start_game(self):
         if len(self.players) < 2:
@@ -825,7 +838,8 @@ async def create_room(payload: dict):
         room.players.append(Player(id=player_id, name=name, is_ai=False, chips=starting_chips))
 
         if mode == "solo":
-            room.fill_ai_bots()
+            ai_count = max(1, min(4, int(payload.get("ai_count", 4))))
+            room.fill_ai_bots(count=ai_count)
             room.start_game()
 
         STORE.save_room(room)
@@ -890,8 +904,12 @@ async def post_action(room_id: str, payload: dict):
         if not room.get_player(player_id):
             return JSONResponse({"error": "플레이어 권한이 없습니다."}, status_code=403)
 
-        if mtype == "start_multi" and player_id == room.host_id and room.phase == "LOBBY":
-            if payload.get("fill_ai", True):
+        if mtype == "add_ai" and player_id == room.host_id and room.phase == "LOBBY":
+            room.add_one_ai()
+        elif mtype == "remove_ai" and player_id == room.host_id and room.phase == "LOBBY":
+            room.remove_ai(payload.get("target_id"))
+        elif mtype == "start_multi" and player_id == room.host_id and room.phase == "LOBBY":
+            if payload.get("fill_ai", False):
                 room.fill_ai_bots()
             if len(room.players) >= 2:
                 room.start_game()

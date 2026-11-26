@@ -1352,3 +1352,24 @@ html, body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
   animation: cardPop 0.25s ease;
 }
+
+/* AI Count Controls & Lobby AI Badge */
+.ai-manage-row {
+  display: flex;
+  gap: 8px;
+}
+.role-pill.ai {
+  background: rgba(155, 89, 182, 0.22);
+  color: #d6a4ff;
+  border: 1px solid rgba(155, 89, 182, 0.5);
+}
+.ai-kick-btn {
+  background: rgba(235, 87, 87, 0.2);
+  border: 1px solid rgba(235, 87, 87, 0.45);
+  color: #ff9a9a;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
