@@ -1095,7 +1095,7 @@ const GAME_CATALOG = [
 
   { id: "card_janggi", name: "카드 장기", cat: "final", catLabel: "결승전", day: "1회전", progress: 0, playable: false, desc: "결승 1회전 · 카드 기반 1:1 장기 변형 전략전" },
   { id: "color_link", name: "컬러 링크", cat: "final", catLabel: "결승전", day: "2회전", progress: 0, playable: false, desc: "결승 2회전 · 색상을 연결하는 퍼즐 보드 대결" },
-  { id: "formula_light", name: "수식 신호등", cat: "final", catLabel: "결승전", day: "3회전", progress: 0, playable: false, desc: "결승 3회전 · 조건 신호에 맞춰 수식을 완성하는 최종전" },
+  { id: "formula_light", name: "수식 신호등", cat: "final", catLabel: "결승전", day: "3회전", progress: 100, playable: true, desc: "결승 3회전 · 9칸 등식(^ 제곱 포함)을 🟩🟨🟥 신호등 힌트로 먼저 맞히는 최종 추리전 (1:1 AI 대결 & 솔로)" },
 
   { id: "piece_puzzle", name: "피스 퍼즐", cat: "exile", catLabel: "유배지", day: "매치 01", progress: 0, playable: false, desc: "유배지 매치 01 · 도형 조각 맞추기 퍼즐" },
   { id: "spot_diff", name: "달라진 그림 찾기", cat: "exile", catLabel: "유배지", day: "매치 02", progress: 0, playable: false, desc: "유배지 매치 02 · 기억력과 관찰력 대결" },
@@ -1147,6 +1147,8 @@ function renderHub() {
         startExchangeGame();
       } else if (g.playable && g.id === "russian_roulette") {
         startRouletteGame();
+      } else if (g.playable && g.id === "formula_light") {
+        startFormulaLightGame("duel");
       } else {
         $("cs-title").textContent = g.name;
         $("cs-cat").textContent = g.catLabel;
