@@ -163,7 +163,7 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 1 / 6 · 목표 &amp; 카드 구성</div>
               <h3 class="slide-title">35장 숫자 카드로 한계에 도전</h3>
-              <p class="slide-desc">카드 합이 <strong>한계 숫자 이하</strong>이면서 가장 가까운 사람이 팟(Pot)을 독식합니다. 높은 숫자일수록 장수가 적고, <strong>-1 카드 7장</strong>이 심리전의 핵심입니다.</p>
+              <p class="slide-desc">카드 합이 <strong>한계 숫자 이하</strong>이면서 가장 가까운 사람이 팟(Pot)을 독식합니다. 칩이 0개가 되면 즉시 <strong>탈락</strong>하며 최후 1인이 우승합니다. (높은 숫자일수록 장수가 적고, <strong>-1 카드 7장</strong> 포함)</p>
               <div class="sim-deck-grid">
                 <div class="sim-mini rare"><span class="n">7</span><span class="c">1장</span></div>
                 <div class="sim-mini rare"><span class="n">6</span><span class="c">2장</span></div>
@@ -181,7 +181,7 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 2 / 6 · 한계 숫자 &amp; 1장 공개</div>
               <h3 class="slide-title">주사위를 굴리고 1장을 공개하세요</h3>
-              <p class="slide-desc">2라운드마다 8면체 주사위(5~12)로 한계 숫자가 정해집니다. 각자 3장을 받고 <strong>1장을 골라 전체 공개</strong>합니다.</p>
+              <p class="slide-desc"><strong>선(⭐)</strong>은 매 라운드 시계 방향으로 이동합니다. <strong>2라운드마다</strong> 8면체 주사위(5~12)로 한계 숫자가 바뀌며, 기본 베팅(R1~2: 1칩, R3~4: 2칩…) 후 3장 중 <strong>1장을 공개</strong>합니다.</p>
               <div class="sim-stage">
                 <div class="sim-dice-row">
                   <div class="sim-dice" id="sim-dice-val">10</div>
@@ -199,7 +199,7 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 3 / 6 · 1차 &amp; 2차 베팅</div>
               <h3 class="slide-title">심리전으로 칩을 불리세요</h3>
-              <p class="slide-desc">HIT/STAY 전후로 두 번 베팅합니다. <strong>최소 칩 보유자의 잔액</strong>을 넘어서는 베팅은 제한되어 약자도 끝까지 버틸 수 있습니다.</p>
+              <p class="slide-desc">선부터 시계 방향으로 베팅합니다. <strong>최소 칩 보유자의 총 잔액</strong>을 넘는 베팅은 불가하며, 1명을 남기고 전원 <strong>포기(Fold)</strong>하면 즉시 팟을 획득합니다.</p>
               <div class="sim-stage">
                 <div class="bet-anim-box">
                   <div class="bet-actor">나 <span class="chip-fly">🪙 +3</span></div>
@@ -218,7 +218,7 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 4 / 6 · HIT / STAY 체험</div>
               <h3 class="slide-title">버스트 위기! HIT 할까요?</h3>
-              <p class="slide-desc">현재 한계 숫자는 <strong>10</strong>, 내 손패 합은 <strong class="red-txt">11 (버스트)</strong>! 아래 <strong>HIT</strong>을 눌러 <code>-1</code> 카드로 기적의 생존을 체험해보세요.</p>
+              <p class="slide-desc"><strong>HIT</strong>으로 뽑은 카드는 <strong>전체 공개</strong>되며, 전원 <strong>STAY</strong>하거나 덱이 소진될 때까지 반복됩니다. 현재 <strong>11(버스트)</strong>! <strong>HIT</strong>을 눌러 <code>-1</code>로 생존해보세요.</p>
               <div class="sim-stage">
                 <div class="sim-status-bar">
                   <span>한계: <strong>10</strong></span>
@@ -241,7 +241,7 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 5 / 6 · 승패 &amp; 동점 규칙</div>
               <h3 class="slide-title">동점이면 카드 수가 많은 쪽이 승!</h3>
-              <p class="slide-desc">한계 10에서 둘 다 합계 10이어도 <strong>카드가 4장인 쪽</strong>이 3장인 쪽을 이깁니다. 전원 버스트 시 팟은 다음 라운드로 이월됩니다.</p>
+              <p class="slide-desc">한계 이하 동점 시 <strong>보유 카드 장수가 많은 쪽</strong>이 승리하며, 장수까지 같으면 팟을 나눕니다. <strong>전원 버스트</strong> 시에는 팟이 다음 라운드로 이월됩니다.</p>
               <div class="sim-stage">
                 <div class="tie-compare">
                   <div class="tie-side win">
