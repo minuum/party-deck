@@ -3,6 +3,7 @@ import os
 import random
 import string
 import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -53,8 +54,12 @@ class RoomStore:
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return json.loads(resp.read().decode("utf-8")).get("result")
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return json.loads(resp.read().decode("utf-8")).get("result")
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Redis HTTP {e.code}: {body}") from e
 
     def ping(self):
         if not self.use_redis:
@@ -776,23 +781,26 @@ async def health():
 
 @app.post("/api/create_room")
 async def create_room(payload: dict):
-    name = (payload.get("name") or "플레이어").strip()[:12]
-    mode = payload.get("mode", "solo")
-    starting_chips = int(payload.get("chips", 30))
-    room_id = gen_room_code()
-    while STORE.get_room(room_id) is not None:
+    try:
+        name = (payload.get("name") or "플레이어").strip()[:12]
+        mode = payload.get("mode", "solo")
+        starting_chips = int(payload.get("chips", 30))
         room_id = gen_room_code()
+        while STORE.get_room(room_id) is not None:
+            room_id = gen_room_code()
 
-    player_id = f"p_{random.randint(10000, 99999)}"
-    room = GameRoom(room_id=room_id, host_id=player_id, starting_chips=starting_chips)
-    room.players.append(Player(id=player_id, name=name, is_ai=False, chips=starting_chips))
+        player_id = f"p_{random.randint(10000, 99999)}"
+        room = GameRoom(room_id=room_id, host_id=player_id, starting_chips=starting_chips)
+        room.players.append(Player(id=player_id, name=name, is_ai=False, chips=starting_chips))
 
-    if mode == "solo":
-        room.fill_ai_bots()
-        room.start_game()
+        if mode == "solo":
+            room.fill_ai_bots()
+            room.start_game()
 
-    STORE.save_room(room)
-    return JSONResponse({"room_id": room_id, "player_id": player_id, "mode": mode})
+        STORE.save_room(room)
+        return JSONResponse({"room_id": room_id, "player_id": player_id, "mode": mode})
+    except Exception as e:
+        return JSONResponse({"error": f"{type(e).__name__}: {e}"}, status_code=500)
 
 
 @app.post("/api/join_room")
