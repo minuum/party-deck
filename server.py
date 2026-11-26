@@ -774,6 +774,11 @@ async def index():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
+@app.get("/favicon.ico")
+async def favicon():
+    return FileResponse(os.path.join(STATIC_DIR, "favicon.svg"), media_type="image/svg+xml")
+
+
 @app.get("/api/health")
 async def health():
     redis_ok, redis_write_ok, redis_detail = STORE.ping()

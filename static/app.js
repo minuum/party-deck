@@ -11,6 +11,8 @@ const PHASE_LABELS = {
 
 let state = null;
 let pollTimer = null;
+let pollInFlight = false;
+let creating = false;
 let selectedChips = 30;
 let roomId = sessionStorage.getItem("hs_room") || "";
 let playerId = sessionStorage.getItem("hs_pid") || "";
@@ -45,19 +47,30 @@ document.querySelectorAll(".seg-btn").forEach((btn) => {
 });
 
 async function createRoom(mode) {
-  const name = $("input-name").value.trim() || "플레이어";
-  const res = await fetch("/api/create_room", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, mode, chips: selectedChips }),
-  });
-  const data = await res.json();
-  if (data.error) return showError(data.error);
-  roomId = data.room_id;
-  playerId = data.player_id;
-  sessionStorage.setItem("hs_room", roomId);
-  sessionStorage.setItem("hs_pid", playerId);
-  startPolling();
+  if (creating) return;
+  creating = true;
+  const btn = mode === "solo" ? $("btn-solo") : $("btn-create-multi");
+  if (btn) btn.disabled = true;
+  try {
+    const name = $("input-name").value.trim() || "플레이어";
+    const res = await fetch("/api/create_room", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, mode, chips: selectedChips }),
+    });
+    const data = await res.json().catch(() => ({ error: `서버 오류 (${res.status})` }));
+    if (!res.ok || data.error) return showError(data.error || "방 생성 실패");
+    roomId = data.room_id;
+    playerId = data.player_id;
+    sessionStorage.setItem("hs_room", roomId);
+    sessionStorage.setItem("hs_pid", playerId);
+    startPolling();
+  } catch (_) {
+    showError("네트워크 오류가 발생했습니다.");
+  } finally {
+    creating = false;
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function joinRoom() {
@@ -92,7 +105,8 @@ function stopPolling() {
 }
 
 async function fetchState() {
-  if (!roomId || !playerId) return;
+  if (!roomId || !playerId || pollInFlight) return;
+  pollInFlight = true;
   try {
     const res = await fetch(`/api/room/${roomId}?player_id=${encodeURIComponent(playerId)}`);
     if (res.status === 404 || res.status === 403) {
@@ -105,7 +119,10 @@ async function fetchState() {
       state = msg.data;
       render();
     }
-  } catch (_) {}
+  } catch (_) {
+  } finally {
+    pollInFlight = false;
+  }
 }
 
 async function sendAction(payload) {
