@@ -985,6 +985,31 @@ def fl_eval_colors(guess: str, answer: str) -> List[str]:
     return res
 
 
+def fl_validate_equation(eq: str) -> Optional[str]:
+    if len(eq) != 9:
+        return "정확히 9칸이어야 합니다."
+    if eq.count("=") != 1:
+        return "등호(=)가 정확히 1개 포함되어야 합니다."
+    allowed = set("0123456789+-×÷^=")
+    if any(ch not in allowed for ch in eq):
+        return "숫자와 연산자(+ - × ÷ ^ =)만 사용할 수 있습니다."
+    import re
+    if re.search(r"(^|[^0-9])0[0-9]", eq):
+        return "0으로 시작하는 두 자리 이상 숫자는 사용할 수 없습니다."
+    lhs, rhs = eq.split("=")
+    if not lhs or not rhs or not rhs.isdigit():
+        return "등호 오른쪽은 자연수(결과값)여야 합니다."
+    py_lhs = lhs.replace("^", "**").replace("×", "*").replace("÷", "/")
+    try:
+        # Safe eval on strictly digits & arithmetic operators
+        val = eval(py_lhs, {"__builtins__": {}}, {})
+        if isinstance(val, bool) or abs(val - int(rhs)) > 1e-9:
+            return f"수식 계산이 맞지 않습니다 ({lhs} ≠ {rhs})."
+    except Exception:
+        return "올바른 수식 형태가 아닙니다."
+    return None
+
+
 def fl_serialize(room: dict, viewer_id: str) -> dict:
     me = next((p for p in room["players"] if p["id"] == viewer_id), None)
     opp = next((p for p in room["players"] if p["id"] != viewer_id), None)
@@ -992,23 +1017,26 @@ def fl_serialize(room: dict, viewer_id: str) -> dict:
     return {
         "room_id": room["room_id"],
         "host_id": room["host_id"],
-        "phase": room["phase"],  # WAITING, PLAYING, DONE
+        "phase": room["phase"],  # WAITING, SETUP, PLAYING, DONE
         "winner_id": room.get("winner_id"),
         "winner_name": room.get("winner_name"),
         "viewer_id": viewer_id,
         "me": {
             "id": me["id"],
             "name": me["name"],
+            "secret_set": bool(me.get("secret")),
+            "my_secret": me.get("secret") or "",
             "guesses": me["guesses"],
-            "target_answer": me["target"] if done else None,
+            "target_answer": (opp.get("secret") if opp and done else None),
         } if me else None,
         "opp": {
             "id": opp["id"],
             "name": opp["name"],
+            "secret_set": bool(opp.get("secret")),
             "tries": len(opp["guesses"]),
             "last_colors": opp["guesses"][-1]["colors"] if opp["guesses"] else [""] * 9,
             "best_greens": max((g["colors"].count("g") for g in opp["guesses"]), default=0),
-            "target_answer": opp["target"] if done else None,
+            "target_answer": (me.get("secret") if me and done else None),
         } if opp else None,
     }
 
@@ -1021,15 +1049,13 @@ async def fl_create(payload: dict):
         while STORE.get_json(f"hs:fl:{room_id}") is not None:
             room_id = gen_room_code()
         pid = f"fl_{random.randint(10000, 99999)}"
-        t1, t2 = random.sample(FL_SERVER_EQUATIONS, 2)
         room = {
             "room_id": room_id,
             "host_id": pid,
             "phase": "WAITING",
             "winner_id": None,
             "winner_name": None,
-            "pending_target": t2,
-            "players": [{"id": pid, "name": name, "target": t1, "guesses": []}],
+            "players": [{"id": pid, "name": name, "secret": "", "guesses": []}],
         }
         STORE.set_json(f"hs:fl:{room_id}", room)
         return JSONResponse({"room_id": room_id, "player_id": pid, "data": fl_serialize(room, pid)})
@@ -1048,15 +1074,31 @@ async def fl_join(payload: dict):
     if len(room["players"]) >= 2:
         return JSONResponse({"error": "이미 2명이 가득 찬 방입니다."}, status_code=400)
     pid = f"fl_{random.randint(10000, 99999)}"
-    room["players"].append({
-        "id": pid,
-        "name": name,
-        "target": room.get("pending_target") or random.choice(FL_SERVER_EQUATIONS),
-        "guesses": [],
-    })
-    room["phase"] = "PLAYING"
+    room["players"].append({"id": pid, "name": name, "secret": "", "guesses": []})
+    room["phase"] = "SETUP"
     STORE.set_json(key, room)
     return JSONResponse({"room_id": room_id, "player_id": pid, "data": fl_serialize(room, pid)})
+
+
+@app.post("/api/fl/{room_id}/set_secret")
+async def fl_set_secret(room_id: str, payload: dict):
+    key = f"hs:fl:{room_id.upper()}"
+    room = STORE.get_json(key)
+    if not room:
+        return JSONResponse({"error": "방을 찾을 수 없습니다."}, status_code=404)
+    pid = payload.get("player_id", "")
+    secret = (payload.get("secret") or "").strip()
+    err = fl_validate_equation(secret)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+    me = next((p for p in room["players"] if p["id"] == pid), None)
+    if not me:
+        return JSONResponse({"error": "권한이 없습니다."}, status_code=403)
+    me["secret"] = secret
+    if len(room["players"]) == 2 and all(bool(p.get("secret")) for p in room["players"]):
+        room["phase"] = "PLAYING"
+    STORE.set_json(key, room)
+    return JSONResponse({"data": fl_serialize(room, pid)})
 
 
 @app.get("/api/fl/{room_id}")
@@ -1080,9 +1122,10 @@ async def fl_guess(room_id: str, payload: dict):
     if room["phase"] != "PLAYING" or len(guess) != 9:
         return JSONResponse({"error": "제출할 수 없는 상태입니다."}, status_code=400)
     me = next((p for p in room["players"] if p["id"] == pid), None)
-    if not me:
+    opp = next((p for p in room["players"] if p["id"] != pid), None)
+    if not me or not opp:
         return JSONResponse({"error": "권한이 없습니다."}, status_code=403)
-    colors = fl_eval_colors(guess, me["target"])
+    colors = fl_eval_colors(guess, opp["secret"])
     me["guesses"].append({"text": guess, "colors": colors})
     if colors.count("g") == 9:
         room["phase"] = "DONE"
@@ -1101,13 +1144,12 @@ async def fl_restart(room_id: str, payload: dict):
     pid = payload.get("player_id", "")
     if pid != room["host_id"]:
         return JSONResponse({"error": "방장만 재경기를 시작할 수 있습니다."}, status_code=403)
-    t1, t2 = random.sample(FL_SERVER_EQUATIONS, 2)
-    room["phase"] = "PLAYING" if len(room["players"]) == 2 else "WAITING"
+    room["phase"] = "SETUP" if len(room["players"]) == 2 else "WAITING"
     room["winner_id"] = None
     room["winner_name"] = None
-    for idx, p in enumerate(room["players"]):
+    for p in room["players"]:
         p["guesses"] = []
-        p["target"] = t1 if idx == 0 else t2
+        p["secret"] = ""
     STORE.set_json(key, room)
     return JSONResponse({"data": fl_serialize(room, pid)})
 

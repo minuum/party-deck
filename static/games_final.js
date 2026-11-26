@@ -81,7 +81,10 @@ function startFormulaLightGame(mode = "duel") {
     roomId: "",
     playerId: "",
     hostId: "",
-    mpPhase: "IDLE", // IDLE, WAITING, PLAYING, DONE
+    mpPhase: "IDLE", // IDLE, WAITING, SETUP, PLAYING, DONE
+    secretSet: false,
+    mySecret: "",
+    oppSecretSet: false,
     oppName: "",
     oppTries: 0,
     oppColors: Array(9).fill(""),
@@ -116,11 +119,20 @@ function renderFormulaLight() {
   const isFriend = flState.mode === "friend";
   const showEntry = isFriend && flState.mpPhase === "IDLE";
   const showWait = isFriend && flState.mpPhase === "WAITING";
-  fBox.classList.toggle("hidden", !(showEntry || showWait));
+  const showSetup = isFriend && flState.mpPhase === "SETUP";
+  fBox.classList.toggle("hidden", !(showEntry || showWait || showSetup));
   $("fl-friend-entry").classList.toggle("hidden", !showEntry);
   $("fl-friend-wait").classList.toggle("hidden", !showWait);
+  if ($("fl-friend-setup")) $("fl-friend-setup").classList.toggle("hidden", !showSetup);
   if (showWait) {
     $("fl-wait-code").textContent = flState.roomId;
+  }
+  if (showSetup) {
+    $("fl-setup-status").textContent = flState.secretSet
+      ? `✅ 내 수식 [${flState.mySecret}] 출제 완료! ${flState.oppName || "상대"} 출제 대기 중...`
+      : `🔐 ${flState.oppName || "상대"}이(가) 맞힐 내 9칸 비밀 수식을 입력하세요!`;
+    $("btn-fl-rand-secret").disabled = flState.secretSet;
+    $("btn-fl-confirm-secret").disabled = flState.secretSet;
   }
 
   // Rival progress bar (AI duel OR Friend playing/done)
@@ -129,7 +141,7 @@ function renderFormulaLight() {
   aiBar.classList.toggle("hidden", !showRival);
   if (showRival) {
     if (isFriend) {
-      $("fl-rival-label").textContent = `🔥 상대 ${flState.oppName || "친구"} (${flState.oppTries}회 시도)`;
+      $("fl-rival-label").textContent = `🔥 ${flState.oppName || "친구"} (${flState.oppTries}회 · 내 출제: ${flState.mySecret})`;
       $("fl-ai-dots").innerHTML = flState.oppColors.map((c) => `<span class="fl-ai-dot ${c}"></span>`).join("");
     } else {
       $("fl-rival-label").textContent = "🤖 결승 상대 AI 추리 현황";
@@ -140,7 +152,7 @@ function renderFormulaLight() {
   // Board
   const board = $("fl-board");
   board.innerHTML = "";
-  const canPlayBoard = !isFriend || flState.mpPhase === "PLAYING" || flState.mpPhase === "DONE";
+  const canPlayBoard = !isFriend || flState.mpPhase === "SETUP" || flState.mpPhase === "PLAYING" || flState.mpPhase === "DONE";
   if (canPlayBoard) {
     flState.guesses.forEach((g) => {
       const row = document.createElement("div");
@@ -154,7 +166,7 @@ function renderFormulaLight() {
       board.appendChild(row);
     });
 
-    if (!flState.done) {
+    if (!flState.done && !(showSetup && flState.secretSet)) {
       const row = document.createElement("div");
       row.className = "fl-row";
       for (let i = 0; i < 9; i++) {
@@ -171,7 +183,7 @@ function renderFormulaLight() {
   // Keypad
   const kp = $("fl-keypad");
   kp.innerHTML = "";
-  if (isFriend && (flState.mpPhase === "IDLE" || flState.mpPhase === "WAITING")) {
+  if (isFriend && (flState.mpPhase === "IDLE" || flState.mpPhase === "WAITING" || (showSetup && flState.secretSet))) {
     return;
   }
 
@@ -242,7 +254,7 @@ function renderFormulaLight() {
 
 function flPressKey(k) {
   if (!flState || flState.done) return;
-  if (flState.mode === "friend" && flState.mpPhase !== "PLAYING") return;
+  if (flState.mode === "friend" && flState.mpPhase !== "PLAYING" && !(flState.mpPhase === "SETUP" && !flState.secretSet)) return;
   if (k === "BACK") {
     flState.input = flState.input.slice(0, -1);
   } else if (flState.input.length < 9) {
@@ -254,6 +266,9 @@ function flPressKey(k) {
 
 async function flSubmit() {
   if (!flState || flState.done) return;
+  if (flState.mode === "friend" && flState.mpPhase === "SETUP") {
+    return flConfirmSecret();
+  }
   if (flState.input.length !== 9) {
     $("fl-banner").textContent = "⚠️ 9칸을 모두 채워야 제출할 수 있습니다!";
     if (typeof SFX !== "undefined") SFX.fold();
@@ -338,26 +353,35 @@ function flApplyServerData(d, fromSubmit = false) {
   flState.mpPhase = d.phase;
   flState.done = d.phase === "DONE";
   if (d.me) {
+    flState.secretSet = Boolean(d.me.secret_set);
+    flState.mySecret = d.me.my_secret || "";
     flState.guesses = d.me.guesses || [];
     flState.keyColors = rebuildFlKeyColors(flState.guesses);
     flState.revealedAnswer = d.me.target_answer || "";
   }
   if (d.opp) {
+    flState.oppSecretSet = Boolean(d.opp.secret_set);
     flState.oppName = d.opp.name;
     flState.oppTries = d.opp.tries;
     flState.oppColors = d.opp.last_colors || Array(9).fill("");
   }
 
-  if (prevPhase === "WAITING" && d.phase === "PLAYING") {
-    $("fl-banner").textContent = `⚔️ ${flState.oppName}님 입장! 지금부터 9칸 수식 레이스 시작!`;
-    $("fl-log").textContent = "상대보다 먼저 9칸 초록불을 켜면 결승전 우승!";
+  if (prevPhase !== "SETUP" && d.phase === "SETUP") {
+    flState.input = "";
+    $("fl-banner").textContent = `🔐 ${flState.oppName}님 입장! 각자 상대가 맞힐 9칸 비밀 수식을 출제하세요!`;
+    $("fl-log").textContent = "키패드로 직접 입력하거나 [🎲 추천 수식 자동 입력]을 누르세요.";
+    if (typeof SFX !== "undefined") SFX.myTurn();
+  } else if (prevPhase !== "PLAYING" && d.phase === "PLAYING") {
+    flState.input = "";
+    $("fl-banner").textContent = `⚔️ 출제 완료! ${flState.oppName}님의 비밀 9칸 수식을 먼저 맞히세요!`;
+    $("fl-log").textContent = `내가 출제한 수식: ${flState.mySecret}`;
     if (typeof SFX !== "undefined") SFX.myTurn();
   } else if (d.phase === "DONE" && prevPhase !== "DONE") {
     const iWon = d.winner_id === flState.playerId;
     $("fl-banner").textContent = iWon
-      ? `🏆 결승전 우승! ${flState.oppName}님보다 먼저 정답을 맞혔습니다!`
-      : `💀 ${d.winner_name}님이 먼저 정답을 맞혔습니다!`;
-    $("fl-log").textContent = `내 정답 수식: ${flState.revealedAnswer}`;
+      ? `🏆 결승전 우승! ${flState.oppName}님의 비밀 수식을 먼저 맞혔습니다!`
+      : `💀 ${d.winner_name}님이 내 수식을 먼저 맞혔습니다!`;
+    $("fl-log").textContent = `상대 비밀 수식: ${flState.revealedAnswer}`;
     if (typeof SFX !== "undefined") {
       if (iWon) SFX.win();
       else SFX.bust();
@@ -445,6 +469,37 @@ async function flFriendRestart() {
     flApplyServerData(out.data);
   }
 }
+
+async function flConfirmSecret() {
+  if (!flState || flState.mpPhase !== "SETUP" || flState.secretSet) return;
+  const errEl = $("fl-setup-err");
+  const showErr = (m) => {
+    errEl.textContent = m;
+    errEl.classList.remove("hidden");
+    setTimeout(() => errEl.classList.add("hidden"), 3000);
+  };
+  if (flState.input.length !== 9) return showErr("9칸 수식을 모두 입력하거나 추천 수식을 눌러주세요.");
+  const res = await fetch(`/api/fl/${flState.roomId}/set_secret`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player_id: flState.playerId, secret: flState.input }),
+  });
+  const out = await res.json();
+  if (!res.ok || out.error) return showErr(out.error || "출제 실패");
+  flState.input = "";
+  if (typeof SFX !== "undefined") SFX.stay();
+  flApplyServerData(out.data);
+}
+
+if ($("btn-fl-rand-secret")) {
+  $("btn-fl-rand-secret").onclick = () => {
+    if (!flState || flState.mpPhase !== "SETUP" || flState.secretSet) return;
+    flState.input = FL_EQUATIONS[Math.floor(Math.random() * FL_EQUATIONS.length)];
+    if (typeof SFX !== "undefined") SFX.dice();
+    renderFormulaLight();
+  };
+}
+if ($("btn-fl-confirm-secret")) $("btn-fl-confirm-secret").onclick = flConfirmSecret;
 
 if ($("btn-fl-create")) $("btn-fl-create").onclick = flFriendCreate;
 if ($("btn-fl-join")) $("btn-fl-join").onclick = flFriendJoin;
