@@ -29,7 +29,51 @@ function flStopPoll() {
 
 function flExitToHub() {
   flStopPoll();
+  sessionStorage.removeItem("fl_in_game");
   showScreen("hub");
+}
+
+function flSaveLocalSession(roomId, playerId, name) {
+  localStorage.setItem("fl_active_room", JSON.stringify({ roomId, playerId, name, savedAt: Date.now() }));
+  sessionStorage.setItem("fl_in_game", "1");
+}
+
+function flRefreshResumeBtn() {
+  const btn = $("btn-fl-resume");
+  if (!btn) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem("fl_active_room") || "null");
+    if (saved && saved.roomId && saved.playerId) {
+      $("fl-resume-meta").textContent = `방 코드 ${saved.roomId} (${saved.name || "플레이어"})`;
+      btn.classList.remove("hidden");
+      btn.onclick = () => flReconnectSaved(saved);
+      return;
+    }
+  } catch (_) {}
+  btn.classList.add("hidden");
+}
+
+async function flReconnectSaved(saved) {
+  if (!saved || !saved.roomId || !saved.playerId) return;
+  if (!flState || flState.mode !== "friend") startFormulaLightGame("friend");
+  flState.roomId = saved.roomId;
+  flState.playerId = saved.playerId;
+  try {
+    const res = await fetch(`/api/fl/${saved.roomId}?player_id=${encodeURIComponent(saved.playerId)}`);
+    if (!res.ok) {
+      localStorage.removeItem("fl_active_room");
+      flRefreshResumeBtn();
+      return flShowFriendErr("만료되었거나 존재하지 않는 방입니다.");
+    }
+    const out = await res.json();
+    if (out.data) {
+      sessionStorage.setItem("fl_in_game", "1");
+      flApplyServerData(out.data, true);
+      flStartPoll();
+    }
+  } catch (_) {
+    flShowFriendErr("재연결 중 오류가 발생했습니다.");
+  }
 }
 
 function evaluateTrafficLight(guess, answer) {
@@ -124,6 +168,10 @@ function renderFormulaLight() {
   const showEntry = isFriend && flState.mpPhase === "IDLE";
   const showWait = isFriend && flState.mpPhase === "WAITING";
   const showSetup = isFriend && flState.mpPhase === "SETUP";
+  if ($("btn-fl-save")) {
+    $("btn-fl-save").classList.toggle("hidden", !(isFriend && flState.roomId));
+  }
+  if (showEntry) flRefreshResumeBtn();
   fBox.classList.toggle("hidden", !(showEntry || showWait || showSetup));
   $("fl-friend-entry").classList.toggle("hidden", !showEntry);
   $("fl-friend-wait").classList.toggle("hidden", !showWait);
@@ -459,7 +507,8 @@ async function flFriendCreate() {
   if (!res.ok || out.error) return flShowFriendErr(out.error || "방 생성 실패");
   flState.roomId = out.room_id;
   flState.playerId = out.player_id;
-  flApplyServerData(out.data);
+  flSaveLocalSession(out.room_id, out.player_id, name);
+  flApplyServerData(out.data, true);
   flStartPoll();
 }
 
@@ -476,8 +525,24 @@ async function flFriendJoin() {
   if (!res.ok || out.error) return flShowFriendErr(out.error || "입장 실패");
   flState.roomId = out.room_id;
   flState.playerId = out.player_id;
-  flApplyServerData(out.data);
+  flSaveLocalSession(out.room_id, out.player_id, name);
+  flApplyServerData(out.data, true);
   flStartPoll();
+}
+
+if ($("btn-fl-save")) {
+  $("btn-fl-save").onclick = async () => {
+    if (!flState || !flState.roomId || !flState.playerId) return;
+    await fetch(`/api/fl/${flState.roomId}/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_id: flState.playerId }),
+    });
+    const name = ($("fl-nick") && $("fl-nick").value.trim()) || "플레이어";
+    flSaveLocalSession(flState.roomId, flState.playerId, name);
+    if (typeof SFX !== "undefined") SFX.save();
+    if (typeof showToast === "function") showToast(`💾 수식 신호등 방 [${flState.roomId}] 7일간 저장 완료!`);
+  };
 }
 
 async function flFriendRestart() {
@@ -640,9 +705,16 @@ function runFlSim(guess) {
 if ($("btn-fl-sim-dummy")) $("btn-fl-sim-dummy").onclick = () => runFlSim("123456789");
 if ($("btn-fl-sim-solve")) $("btn-fl-sim-solve").onclick = () => runFlSim("2^5+18=50");
 
-// Auto-open Friend 1:1 if URL has ?fl_room=XXXX
+// Auto-open Friend 1:1 if URL has ?fl_room=XXXX or refreshed mid-game
 const flUrlCode = new URLSearchParams(window.location.search).get("fl_room");
 if (flUrlCode) {
   startFormulaLightGame("friend");
   if ($("fl-code-in")) $("fl-code-in").value = flUrlCode.toUpperCase();
+} else if (sessionStorage.getItem("fl_in_game") === "1") {
+  try {
+    const saved = JSON.parse(localStorage.getItem("fl_active_room") || "null");
+    if (saved && saved.roomId && saved.playerId) {
+      flReconnectSaved(saved);
+    }
+  } catch (_) {}
 }

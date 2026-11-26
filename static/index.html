@@ -220,6 +220,7 @@
       <div class="sub-nav-bar">
         <button class="back-hub-btn" type="button" onclick="flExitToHub()">◀ 전체 게임 목록</button>
         <div style="display:flex;align-items:center;gap:6px;">
+          <button id="btn-fl-save" class="icon-btn hidden" type="button" title="현재 방 7일 저장">💾 저장</button>
           <button id="btn-fl-rules" class="icon-btn" type="button" title="수식 신호등 규칙 & 시뮬레이션">📜 규칙</button>
           <span class="sub-nav-tag">결승전 3회전</span>
         </div>
@@ -237,6 +238,10 @@
       <!-- Friend 1:1 Setup / Waiting Panel -->
       <div id="fl-friend-box" class="glass-card hidden" style="padding:12px;gap:8px;margin-bottom:6px;">
         <div id="fl-friend-entry">
+          <button id="btn-fl-resume" type="button" class="btn btn-resume hidden" style="width:100%;margin-bottom:8px;padding:9px;">
+            <span>💾 진행 중인 방 이어하기</span>
+            <small id="fl-resume-meta">방 코드 ----</small>
+          </button>
           <div class="field-label" style="margin-bottom:6px;">👥 친구와 1:1 수식 신호등 대결</div>
           <div style="display:flex;gap:6px;margin-bottom:8px;">
             <input id="fl-nick" class="text-input" style="padding:8px 10px;font-size:13px;" maxlength="12" placeholder="내 닉네임" value="민우" />

@@ -1071,13 +1071,30 @@ async def fl_join(payload: dict):
     room = STORE.get_json(key)
     if not room:
         return JSONResponse({"error": "수식 신호등 방을 찾을 수 없습니다."}, status_code=404)
+    # Reconnect if player with same nickname is already in this room
+    existing = next((p for p in room["players"] if p["name"] == name), None)
+    if existing:
+        return JSONResponse({"room_id": room_id, "player_id": existing["id"], "rejoined": True, "data": fl_serialize(room, existing["id"])})
     if len(room["players"]) >= 2:
-        return JSONResponse({"error": "이미 2명이 가득 찬 방입니다."}, status_code=400)
+        return JSONResponse({"error": "이미 2명이 가득 찬 방입니다. (기존 닉네임으로 입력하면 재입장됩니다)"}, status_code=400)
     pid = f"fl_{random.randint(10000, 99999)}"
     room["players"].append({"id": pid, "name": name, "secret": "", "guesses": []})
     room["phase"] = "SETUP"
     STORE.set_json(key, room)
     return JSONResponse({"room_id": room_id, "player_id": pid, "data": fl_serialize(room, pid)})
+
+
+@app.post("/api/fl/{room_id}/save")
+async def fl_save(room_id: str, payload: dict):
+    key = f"hs:fl:{room_id.upper()}"
+    room = STORE.get_json(key)
+    if not room:
+        return JSONResponse({"error": "방을 찾을 수 없습니다."}, status_code=404)
+    pid = payload.get("player_id", "")
+    if not any(p["id"] == pid for p in room["players"]):
+        return JSONResponse({"error": "권한이 없습니다."}, status_code=403)
+    STORE.set_json(key, room, ttl=604800)  # 7 days
+    return JSONResponse({"saved": True, "data": fl_serialize(room, pid)})
 
 
 @app.post("/api/fl/{room_id}/set_secret")
