@@ -966,13 +966,13 @@ if ($("btn-host-end")) {
 // ---------------------------------------------------------------------------
 const GAME_CATALOG = [
   { id: "hit_stay", name: "HIT, STAY", cat: "main", catLabel: "메인매치", day: "6일차", progress: 100, playable: true, desc: "35장 숫자 카드와 8면체 주사위 한계 숫자로 승부하는 5인 생존 베팅 게임 (AI 1~4명 & 실시간 멀티플레이)" },
-  { id: "choice", name: "양자택일", cat: "main", catLabel: "메인매치", day: "1일차", progress: 0, playable: false, desc: "1일차 메인매치 · 다수결/소수결 심리전 선택 게임" },
+  { id: "choice", name: "양자택일", cat: "main", catLabel: "메인매치", day: "1일차", progress: 100, playable: true, desc: "1일차 메인매치 · 6라운드 공공의 이익 vs 개인의 이익 과반수 심리전 (7인전)" },
   { id: "mystery_exchange", name: "미스터리 거래소", cat: "main", catLabel: "메인매치", day: "2일차", progress: 0, playable: false, desc: "2일차 메인매치 · 숨겨진 시세와 정보를 활용한 거래 게임" },
   { id: "gem_market", name: "보석 암시장", cat: "main", catLabel: "메인매치", day: "3일차", progress: 0, playable: false, desc: "3일차 메인매치 · 보석 경매 및 비밀 거래 심리전" },
   { id: "auction_bingo", name: "경매 빙고", cat: "main", catLabel: "메인매치", day: "4일차", progress: 0, playable: false, desc: "4일차 메인매치 · 경매로 숫자를 낙찰받아 빙고를 완성하는 전략전" },
   { id: "hidden_word", name: "히든 워드", cat: "main", catLabel: "메인매치", day: "5일차", progress: 0, playable: false, desc: "5일차 메인매치 · 숨겨진 단어를 추리하는 언어 추론 게임" },
 
-  { id: "heavy_13", name: "무거운 13", cat: "prison", catLabel: "감옥매치", day: "1일차", progress: 0, playable: false, desc: "1일차 감옥매치 · 무게와 숫자를 조절하는 데스매치" },
+  { id: "heavy_13", name: "무거운 13", cat: "prison", catLabel: "감옥매치", day: "1일차", progress: 100, playable: true, desc: "1일차 감옥매치 · 바위 카드(0~6)와 3색+레인보우 칩으로 임계점 13을 피하는 14라운드 전략전" },
   { id: "russian_roulette", name: "러시안 룰렛", cat: "prison", catLabel: "감옥매치", day: "2일차", progress: 0, playable: false, desc: "2일차 감옥매치 · 확률과 배짱의 러시안 룰렛" },
   { id: "piggy_bank", name: "돼지 저금통", cat: "prison", catLabel: "감옥매치", day: "3일차", progress: 0, playable: false, desc: "3일차 감옥매치 · 칩 분배와 눈치 싸움" },
   { id: "wall_go_2", name: "벽바둑 2", cat: "prison", catLabel: "감옥매치", day: "4일차", progress: 0, playable: false, desc: "4일차 감옥매치 · 벽을 세워 영토를 차지하는 보드 전략전" },
@@ -1025,6 +1025,10 @@ function renderHub() {
     btn.onclick = () => {
       if (g.playable && g.id === "hit_stay") {
         showScreen("home");
+      } else if (g.playable && g.id === "choice") {
+        startChoiceGame();
+      } else if (g.playable && g.id === "heavy_13") {
+        startHeavy13Game();
       } else {
         $("cs-title").textContent = g.name;
         $("cs-cat").textContent = g.catLabel;

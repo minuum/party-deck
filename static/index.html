@@ -41,7 +41,15 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v1.9 <span>방금 전</span></div>
+          <div class="patch-ver">v2.0 <span>방금 전</span></div>
+          <ul>
+            <li><strong>1일차 메인매치 〈양자택일〉</strong> 구현 완료 (6라운드 협력/배신 심리전)</li>
+            <li><strong>1일차 감옥매치 〈무거운 13〉</strong> 구현 완료 (14라운드 바위·칩·임계점 13 전략전)</li>
+            <li>Party Deck 구현 현황 <strong>3 / 23</strong> 달성!</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v1.9</div>
           <ul>
             <li><strong>Party Deck 게임 종합 허브</strong> 메인 페이지 추가 (23개 게임 목록 &amp; 구현도 표시)</li>
             <li>카테고리 필터(메인·감옥·결승·유배지) 및 준비 중 게임 미리보기 모달 지원</li>
@@ -131,6 +139,73 @@
       </div>
 
       <div id="hub-games-grid" class="hub-games-grid"></div>
+    </section>
+
+    <!-- DAY 1 MAIN MATCH: 양자택일 -->
+    <section id="screen-choice" class="screen">
+      <div class="sub-nav-bar">
+        <button class="back-hub-btn" type="button" onclick="showScreen('hub')">◀ 전체 게임 목록</button>
+        <span class="sub-nav-tag">1일차 메인매치 · 양자택일</span>
+      </div>
+      <div class="d1-hud">
+        <span class="round-pill" id="ch-round">R1 / 6</span>
+        <span class="pot-val" id="ch-prize" style="font-size:13px;">공동상금 0억</span>
+        <span class="chip-pill" style="font-size:12px;">내 점수 <strong id="ch-my-score">0</strong></span>
+      </div>
+      <div class="glass-card" style="gap:10px;padding:14px;">
+        <div class="slide-eyebrow" id="ch-theme">ROUND 1 · 신뢰의 시작</div>
+        <div id="ch-rule-desc" class="slide-desc" style="font-size:13px;">
+          7명 중 <strong>4명 이상</strong>이 <strong>공공의 이익</strong>을 선택하면 공동 상금 +0.5억 &amp; 전원 +3점! 과반 실패 시 개인의 이익 선택자만 +5점!
+        </div>
+        <div id="ch-scoreboard" class="d1-score-grid"></div>
+      </div>
+      <div class="table-banner" style="margin-top:8px;">
+        <div id="ch-banner" class="banner-text">이번 라운드 당신의 선택은?</div>
+        <div id="ch-log" class="mini-log">AI 6명과 동시에 선택합니다.</div>
+      </div>
+      <div id="ch-actions" class="action-bar" style="margin-top:auto;">
+        <div class="action-row cols-2">
+          <button type="button" class="act-btn act-hit" id="btn-ch-public">🤝 공공의 이익</button>
+          <button type="button" class="act-btn act-fold" id="btn-ch-private">😈 개인의 이익</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- DAY 1 PRISON MATCH: 무거운 13 -->
+    <section id="screen-heavy13" class="screen">
+      <div class="sub-nav-bar">
+        <button class="back-hub-btn" type="button" onclick="showScreen('hub')">◀ 전체 게임 목록</button>
+        <span class="sub-nav-tag">1일차 감옥매치 · 무거운 13</span>
+      </div>
+      <div class="d1-hud">
+        <span class="round-pill" id="h13-round">R1 / 14</span>
+        <span class="phase-pill" id="h13-refill">세트 1 (R1~7)</span>
+        <span class="chip-pill" style="font-size:12px;">내 벌점 <strong id="h13-my-pen" style="color:#ff6b6b;">0</strong></span>
+      </div>
+
+      <!-- 3 Pedestals -->
+      <div class="h13-pedestals" id="h13-pedestals"></div>
+
+      <!-- Players Penalties -->
+      <div class="d1-score-grid" id="h13-players"></div>
+
+      <div class="table-banner" style="margin:6px 0;">
+        <div id="h13-banner" class="banner-text">바위 카드 1장 + 받침대 칩 1개를 선택하세요</div>
+        <div id="h13-log" class="mini-log">합이 13 이상 되면 폭발! 놓여있던 카드 장수만큼 벌점!</div>
+      </div>
+
+      <div class="my-area" style="gap:8px;padding:10px;">
+        <div class="h13-pick-label">1. 바위 카드 선택 (숫자 큰 순 배치)</div>
+        <div class="h13-row" id="h13-cards"></div>
+        <div class="h13-pick-label">2. 받침대 칩 선택 (🌈 레인보우 최우선)</div>
+        <div class="h13-row" id="h13-chips"></div>
+        <div id="h13-rainbow-pick" class="h13-row hidden">
+          <button type="button" class="rb-target active" data-color="red">🔴 빨강에 올리기</button>
+          <button type="button" class="rb-target" data-color="green">🟢 초록에 올리기</button>
+          <button type="button" class="rb-target" data-color="blue">🔵 파랑에 올리기</button>
+        </div>
+        <button type="button" id="btn-h13-submit" class="btn btn-gold" style="padding:11px;" disabled>선택 완료 · 동시 제출</button>
+      </div>
     </section>
 
     <!-- HIT, STAY HOME / LOBBY SCREEN -->
@@ -465,5 +540,6 @@
   </div>
 
   <script src="/static/app.js"></script>
+  <script src="/static/games_day1.js"></script>
 </body>
 </html>
