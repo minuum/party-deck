@@ -553,7 +553,7 @@ class GameRoom:
                 p.last_action = f"콜 (+{pay})"
                 self.add_log(f"🪙 {p.name} 콜 (+{pay}칩)")
         elif action == "raise":
-            raise_amount = max(1, min(raise_amount, 10))
+            raise_amount = max(1, int(raise_amount))
             target_bet = self.current_bet + raise_amount
             needed = max(0, target_bet - p.phase_bet)
             max_allowed = max(0, self.max_round_bet - p.round_bet)

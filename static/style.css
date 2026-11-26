@@ -1878,3 +1878,30 @@ html, body {
 .rc-bar-fill.minus { background: linear-gradient(90deg, #c0392b, #ff6b6b); }
 .rc-cnt { font-size: 11px; color: #ccc; text-align: right; font-weight: 700; }
 .rc-pct { font-size: 11px; color: var(--gold-bright); text-align: right; font-weight: 800; }
+
+/* Full-Range Official Raise Controls */
+.act-allin {
+  background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%);
+  color: #fff;
+  font-size: 12.5px;
+  padding: 10px 4px;
+}
+.raise-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+.raise-range {
+  flex: 1;
+  accent-color: #d4af37;
+  cursor: pointer;
+}
+.slider-go {
+  flex-shrink: 0;
+  padding: 7px 10px !important;
+  font-size: 12px !important;
+}

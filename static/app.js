@@ -429,18 +429,43 @@ function renderActionBar(me) {
     row1.append(foldBtn, callBtn);
     bar.appendChild(row1);
 
-    // Raise options
-    if (me.chips > callPay && maxAllowed > callPay) {
+    // Raise options up to official cap (min active stack / max_round_bet)
+    const maxRaise = Math.min(me.chips, maxAllowed) - callPay;
+    if (maxRaise >= 1) {
+      const presets = [1, 3, 5, 10].filter((v) => v < maxRaise);
       const row2 = document.createElement("div");
-      row2.className = "action-row cols-4";
-      [1, 2, 3, 5].forEach((amt) => {
+      row2.className = "action-row";
+      row2.style.gridTemplateColumns = `repeat(${presets.length + 1}, 1fr)`;
+      presets.forEach((amt) => {
         const rb = document.createElement("button");
         rb.className = "act-btn act-raise";
-        rb.textContent = `레이즈 +${amt}`;
+        rb.textContent = `+${amt}`;
         rb.onclick = () => sendAction({ type: "bet", action: "raise", amount: amt });
         row2.appendChild(rb);
       });
+      const maxBtn = document.createElement("button");
+      maxBtn.className = "act-btn act-allin";
+      maxBtn.textContent = `최대 +${maxRaise}`;
+      maxBtn.onclick = () => sendAction({ type: "bet", action: "raise", amount: maxRaise });
+      row2.appendChild(maxBtn);
       bar.appendChild(row2);
+
+      if (maxRaise > 1) {
+        const sliderWrap = document.createElement("div");
+        sliderWrap.className = "raise-slider-row";
+        const initVal = Math.min(Math.max(1, Math.ceil(maxRaise / 2)), maxRaise);
+        sliderWrap.innerHTML = `
+          <input type="range" class="raise-range" min="1" max="${maxRaise}" value="${initVal}" />
+          <button type="button" class="act-btn act-raise slider-go">레이즈 +${initVal}칩 (한도 ${maxRaise})</button>
+        `;
+        const rng = sliderWrap.querySelector("input");
+        const go = sliderWrap.querySelector("button");
+        rng.oninput = () => {
+          go.textContent = `레이즈 +${rng.value}칩 (한도 ${maxRaise})`;
+        };
+        go.onclick = () => sendAction({ type: "bet", action: "raise", amount: parseInt(rng.value, 10) });
+        bar.appendChild(sliderWrap);
+      }
     }
     return;
   }
