@@ -23,16 +23,18 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 # ---------------------------------------------------------------------------
 class RoomStore:
     def __init__(self):
-        self.url = (
+        raw_url = (
             os.environ.get("UPSTASH_REDIS_REST_URL")
             or os.environ.get("KV_REST_API_URL")
             or ""
-        ).rstrip("/")
-        self.token = (
+        )
+        raw_token = (
             os.environ.get("UPSTASH_REDIS_REST_TOKEN")
             or os.environ.get("KV_REST_API_TOKEN")
             or ""
         )
+        self.url = raw_url.strip().strip('"').strip("'").rstrip("/")
+        self.token = raw_token.strip().strip('"').strip("'")
         self.local: Dict[str, str] = {}
         self.local_locks: Dict[str, float] = {}
 
@@ -43,15 +45,25 @@ class RoomStore:
     def _redis_cmd(self, *args):
         req = urllib.request.Request(
             self.url,
-            data=json.dumps(list(args)).encode("utf-8"),
+            data=json.dumps([str(a) for a in args]).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {self.token}",
                 "Content-Type": "application/json",
+                "User-Agent": "party-deck/1.0",
             },
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
             return json.loads(resp.read().decode("utf-8")).get("result")
+
+    def ping(self):
+        if not self.use_redis:
+            return False, "not_configured"
+        try:
+            res = self._redis_cmd("PING")
+            return res == "PONG", str(res)
+        except Exception as e:
+            return False, f"{type(e).__name__}: {e}"
 
     def get_room(self, room_id: str) -> Optional["GameRoom"]:
         key = f"hs:room:{room_id}"
@@ -753,7 +765,13 @@ async def index():
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "redis": STORE.use_redis}
+    redis_ok, redis_detail = STORE.ping()
+    return {
+        "ok": True,
+        "redis": STORE.use_redis,
+        "redis_ok": redis_ok,
+        "redis_detail": redis_detail,
+    }
 
 
 @app.post("/api/create_room")
