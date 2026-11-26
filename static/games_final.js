@@ -1,5 +1,5 @@
 // ===========================================================================
-// FINAL ROUND 3: 수식 신호등 (Equation Traffic Light — Solo, vs AI, & 1:1 Friend)
+// FINAL ROUND 3: 수식 신호등 (Equation Traffic Light — Solo / AI Duel / Friend 1:1)
 // ===========================================================================
 
 const FL_EQUATIONS = [
@@ -51,24 +51,24 @@ function evaluateTrafficLight(guess, answer) {
   return res;
 }
 
-function rebuildKeyColors(guesses) {
+function rebuildFlKeyColors(guesses) {
+  const keyColors = {};
   const rank = { "": 0, r: 1, y: 2, g: 3 };
-  const map = {};
   guesses.forEach((g) => {
     for (let i = 0; i < 9; i++) {
       const ch = g.text[i];
       const col = g.colors[i];
-      if (rank[col] > rank[map[ch] || ""]) map[ch] = col;
+      if (rank[col] > rank[keyColors[ch] || ""]) keyColors[ch] = col;
     }
   });
-  return map;
+  return keyColors;
 }
 
 function startFormulaLightGame(mode = "duel") {
   flStopPoll();
   const answer = FL_EQUATIONS[Math.floor(Math.random() * FL_EQUATIONS.length)];
   flState = {
-    mode, // 'duel', 'solo', 'friend'
+    mode,
     answer,
     guesses: [],
     input: "",
@@ -80,15 +80,22 @@ function startFormulaLightGame(mode = "duel") {
     // Friend 1:1 multiplayer fields
     roomId: "",
     playerId: "",
-    remote: null,
+    hostId: "",
+    mpPhase: "IDLE", // IDLE, WAITING, PLAYING, DONE
+    oppName: "",
+    oppTries: 0,
+    oppColors: Array(9).fill(""),
+    winnerName: "",
+    winnerId: "",
+    revealedAnswer: "",
   };
   document.querySelectorAll(".fl-mode-btn").forEach((b) => {
     b.classList.toggle("active", b.dataset.mode === mode);
   });
   showScreen("formula-light");
   if (mode === "friend") {
-    $("fl-banner").textContent = "👥 친구 1:1 방을 만들거나 초대 코드로 입장하세요!";
-    $("fl-log").textContent = "친구가 입장하면 실시간 9칸 수식 레이스가 즉시 시작됩니다.";
+    $("fl-banner").textContent = "👥 친구와 1:1 대결! 방을 만들거나 4자리 코드로 입장하세요.";
+    $("fl-log").textContent = "방이 시작되면 먼저 9칸 초록불을 켜는 쪽이 우승합니다!";
   } else if (mode === "duel") {
     $("fl-banner").textContent = "⚔️ 결승 3회전 시작! AI보다 먼저 9칸 수식을 맞히세요!";
     $("fl-log").textContent = "계산이 틀린 더미 수식도 제출 가능 · 0으로 시작하는 수 없음";
@@ -100,201 +107,83 @@ function startFormulaLightGame(mode = "duel") {
   if (typeof SFX !== "undefined") SFX.dice();
 }
 
-function flShowFriendErr(msg) {
-  const el = $("fl-friend-err");
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove("hidden");
-  setTimeout(() => el.classList.add("hidden"), 3200);
-}
-
-async function flCreateRoom() {
-  const name = ($("fl-nick") && $("fl-nick").value.trim()) || "방장";
-  try {
-    const res = await fetch("/api/fl/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    const d = await res.json();
-    if (!res.ok || d.error) return flShowFriendErr(d.error || "방 생성 실패");
-    flState.roomId = d.room_id;
-    flState.playerId = d.player_id;
-    flApplyRemote(d.data);
-    flStartPoll();
-  } catch (_) {
-    flShowFriendErr("네트워크 오류");
-  }
-}
-
-async function flJoinRoom() {
-  const name = ($("fl-nick") && $("fl-nick").value.trim()) || "도전자";
-  const code = ($("fl-code-in") && $("fl-code-in").value.trim().toUpperCase()) || "";
-  if (code.length < 4) return flShowFriendErr("4자리 방 코드를 입력하세요.");
-  try {
-    const res = await fetch("/api/fl/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ room_id: code, name }),
-    });
-    const d = await res.json();
-    if (!res.ok || d.error) return flShowFriendErr(d.error || "입장 실패");
-    flState.roomId = d.room_id;
-    flState.playerId = d.player_id;
-    flApplyRemote(d.data);
-    flStartPoll();
-  } catch (_) {
-    flShowFriendErr("네트워크 오류");
-  }
-}
-
-function flStartPoll() {
-  flStopPoll();
-  flPollTimer = setInterval(async () => {
-    if (!flState || flState.mode !== "friend" || !flState.roomId || flPollBusy) return;
-    flPollBusy = true;
-    try {
-      const res = await fetch(`/api/fl/${flState.roomId}?player_id=${encodeURIComponent(flState.playerId)}`);
-      if (res.ok) {
-        const d = await res.json();
-        if (d.data) flApplyRemote(d.data);
-      }
-    } catch (_) {
-    } finally {
-      flPollBusy = false;
-    }
-  }, 850);
-}
-
-function flApplyRemote(rem) {
-  const prevPhase = flState.remote ? flState.remote.phase : "";
-  flState.remote = rem;
-  flState.guesses = rem.me ? rem.me.guesses : [];
-  flState.keyColors = rebuildKeyColors(flState.guesses);
-  flState.done = rem.phase === "DONE";
-  flState.won = rem.winner_id === flState.playerId;
-
-  if (rem.phase === "WAITING") {
-    $("fl-banner").textContent = `👑 방 코드 [ ${rem.room_id} ] · 친구 입장 대기 중...`;
-    $("fl-log").textContent = "초대 링크나 코드를 친구에게 보내주세요!";
-  } else if (rem.phase === "PLAYING") {
-    if (prevPhase === "WAITING" && typeof SFX !== "undefined") SFX.myTurn();
-    const oppName = rem.opp ? rem.opp.name : "상대";
-    const oppG = rem.opp ? rem.opp.best_greens : 0;
-    $("fl-banner").textContent = `⚔️ ${oppName}님과 1:1 결승전 진행 중!`;
-    $("fl-log").textContent = `${oppName}님 최고 기록: 초록불 ${oppG}/9개 (${rem.opp ? rem.opp.tries : 0}회 시도)`;
-  } else if (rem.phase === "DONE") {
-    if (prevPhase !== "DONE" && typeof SFX !== "undefined") {
-      if (flState.won) SFX.win();
-      else SFX.bust();
-    }
-    const myAns = rem.me && rem.me.target_answer ? rem.me.target_answer : "";
-    $("fl-banner").textContent = flState.won
-      ? `🏆 결승전 승리! ${rem.winner_name}님이 먼저 9칸을 맞혔습니다!`
-      : `💀 패배! ${rem.winner_name}님이 먼저 정답을 맞혔습니다.`;
-    $("fl-log").textContent = `내 문제 정답: ${myAns}`;
-  }
-  renderFormulaLight();
-}
-
 function renderFormulaLight() {
   if (!flState) return;
   $("fl-tries").textContent = flState.guesses.length;
 
-  // Friend setup / wait panel
+  // Friend 1:1 Box visibility
   const fBox = $("fl-friend-box");
   const isFriend = flState.mode === "friend";
-  const inWaiting = isFriend && flState.remote && flState.remote.phase === "WAITING";
-  const needsRoom = isFriend && !flState.roomId;
-  fBox.classList.toggle("hidden", !(needsRoom || inWaiting));
-  if (needsRoom) {
-    $("fl-friend-entry").classList.remove("hidden");
-    $("fl-friend-wait").classList.add("hidden");
-  } else if (inWaiting) {
-    $("fl-friend-entry").classList.add("hidden");
-    $("fl-friend-wait").classList.remove("hidden");
+  const showEntry = isFriend && flState.mpPhase === "IDLE";
+  const showWait = isFriend && flState.mpPhase === "WAITING";
+  fBox.classList.toggle("hidden", !(showEntry || showWait));
+  $("fl-friend-entry").classList.toggle("hidden", !showEntry);
+  $("fl-friend-wait").classList.toggle("hidden", !showWait);
+  if (showWait) {
     $("fl-wait-code").textContent = flState.roomId;
   }
 
-  // Rival Bar (AI or Friend Playing/Done)
+  // Rival progress bar (AI duel OR Friend playing/done)
   const aiBar = $("fl-ai-bar");
-  const showRival =
-    flState.mode === "duel" ||
-    (isFriend && flState.remote && flState.remote.opp && flState.remote.phase !== "WAITING");
+  const showRival = flState.mode === "duel" || (isFriend && (flState.mpPhase === "PLAYING" || flState.mpPhase === "DONE"));
   aiBar.classList.toggle("hidden", !showRival);
   if (showRival) {
-    if (flState.mode === "duel") {
-      $("fl-rival-label").textContent = "🤖 결승 상대 AI 추리 현황";
-      $("fl-ai-dots").innerHTML = flState.aiProgress
-        .map((c) => `<span class="fl-ai-dot ${c}"></span>`)
-        .join("");
+    if (isFriend) {
+      $("fl-rival-label").textContent = `🔥 상대 ${flState.oppName || "친구"} (${flState.oppTries}회 시도)`;
+      $("fl-ai-dots").innerHTML = flState.oppColors.map((c) => `<span class="fl-ai-dot ${c}"></span>`).join("");
     } else {
-      const opp = flState.remote.opp;
-      $("fl-rival-label").textContent = `🔥 ${opp.name} (${opp.tries}회)`;
-      $("fl-ai-dots").innerHTML = opp.last_colors
-        .map((c) => `<span class="fl-ai-dot ${c}"></span>`)
-        .join("");
+      $("fl-rival-label").textContent = "🤖 결승 상대 AI 추리 현황";
+      $("fl-ai-dots").innerHTML = flState.aiProgress.map((c) => `<span class="fl-ai-dot ${c}"></span>`).join("");
     }
   }
 
   // Board
   const board = $("fl-board");
   board.innerHTML = "";
-  const canInput = !flState.done && (!isFriend || (flState.remote && flState.remote.phase === "PLAYING"));
+  const canPlayBoard = !isFriend || flState.mpPhase === "PLAYING" || flState.mpPhase === "DONE";
+  if (canPlayBoard) {
+    flState.guesses.forEach((g) => {
+      const row = document.createElement("div");
+      row.className = "fl-row";
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement("div");
+        cell.className = `fl-cell ${g.colors[i]}`;
+        cell.textContent = g.text[i];
+        row.appendChild(cell);
+      }
+      board.appendChild(row);
+    });
 
-  flState.guesses.forEach((g) => {
-    const row = document.createElement("div");
-    row.className = "fl-row";
-    for (let i = 0; i < 9; i++) {
-      const cell = document.createElement("div");
-      cell.className = `fl-cell ${g.colors[i]}`;
-      cell.textContent = g.text[i];
-      row.appendChild(cell);
+    if (!flState.done) {
+      const row = document.createElement("div");
+      row.className = "fl-row";
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement("div");
+        cell.className = "fl-cell" + (i === flState.input.length ? " active-input" : "");
+        cell.textContent = flState.input[i] || "";
+        row.appendChild(cell);
+      }
+      board.appendChild(row);
     }
-    board.appendChild(row);
-  });
-
-  if (canInput) {
-    const row = document.createElement("div");
-    row.className = "fl-row";
-    for (let i = 0; i < 9; i++) {
-      const cell = document.createElement("div");
-      cell.className = "fl-cell" + (i === flState.input.length ? " active-input" : "");
-      cell.textContent = flState.input[i] || "";
-      row.appendChild(cell);
-    }
-    board.appendChild(row);
   }
   board.scrollTop = board.scrollHeight;
 
   // Keypad
   const kp = $("fl-keypad");
   kp.innerHTML = "";
-  if (needsRoom || inWaiting) return;
+  if (isFriend && (flState.mpPhase === "IDLE" || flState.mpPhase === "WAITING")) {
+    return;
+  }
 
   if (flState.done) {
     if (isFriend) {
-      const isHost = flState.remote && flState.remote.host_id === flState.playerId;
+      const isHost = flState.playerId === flState.hostId;
       kp.innerHTML = `
         <div class="action-row cols-2">
-          ${isHost ? '<button type="button" class="btn btn-gold" id="btn-fl-rematch">재경기 시작 ↺</button>' : '<div class="wait-pill">방장 재경기 대기 중</div>'}
+          ${isHost ? `<button type="button" class="btn btn-gold" onclick="flFriendRestart()">🔄 친구와 재경기</button>` : `<div class="wait-pill">방장이 재경기를 누르면 시작됩니다</div>`}
           <button type="button" class="btn btn-outline" onclick="flExitToHub()">게임 목록</button>
         </div>
       `;
-      if (isHost && $("btn-fl-rematch")) {
-        $("btn-fl-rematch").onclick = async () => {
-          const res = await fetch(`/api/fl/${flState.roomId}/restart`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ player_id: flState.playerId }),
-          });
-          if (res.ok) {
-            const d = await res.json();
-            flState.input = "";
-            flApplyRemote(d.data);
-          }
-        };
-      }
     } else {
       kp.innerHTML = `
         <div class="action-row cols-2">
@@ -353,7 +242,7 @@ function renderFormulaLight() {
 
 function flPressKey(k) {
   if (!flState || flState.done) return;
-  if (flState.mode === "friend" && (!flState.remote || flState.remote.phase !== "PLAYING")) return;
+  if (flState.mode === "friend" && flState.mpPhase !== "PLAYING") return;
   if (k === "BACK") {
     flState.input = flState.input.slice(0, -1);
   } else if (flState.input.length < 9) {
@@ -374,27 +263,25 @@ async function flSubmit() {
   const guess = flState.input;
   flState.input = "";
 
-  // Friend 1:1 multiplayer submit
+  // Friend 1:1 Server Submit
   if (flState.mode === "friend") {
+    if (flState.mpPhase !== "PLAYING") return;
     try {
       const res = await fetch(`/api/fl/${flState.roomId}/guess`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ player_id: flState.playerId, guess }),
       });
-      if (res.ok) {
-        const d = await res.json();
-        if (typeof SFX !== "undefined") SFX.cardFlip();
-        flApplyRemote(d.data);
-      }
+      const out = await res.json();
+      if (out.data) flApplyServerData(out.data, true);
     } catch (_) {}
     return;
   }
 
-  // Solo / vs AI submit
+  // Local Solo / AI Duel Submit
   const colors = evaluateTrafficLight(guess, flState.answer);
   flState.guesses.push({ text: guess, colors });
-  flState.keyColors = rebuildKeyColors(flState.guesses);
+  flState.keyColors = rebuildFlKeyColors(flState.guesses);
 
   const greens = colors.filter((c) => c === "g").length;
   const yellows = colors.filter((c) => c === "y").length;
@@ -417,7 +304,6 @@ async function flSubmit() {
       if (i < flState.aiSolvedCount) return "g";
       return Math.random() < 0.45 ? "y" : "r";
     });
-
     if (flState.aiSolvedCount >= 9 && t >= 6) {
       flState.done = true;
       flState.won = false;
@@ -441,17 +327,132 @@ async function flSubmit() {
   renderFormulaLight();
 }
 
-// Mode & Friend buttons
-document.querySelectorAll(".fl-mode-btn").forEach((btn) => {
-  btn.addEventListener("click", () => startFormulaLightGame(btn.dataset.mode));
-});
-if ($("btn-fl-create")) $("btn-fl-create").onclick = flCreateRoom;
-if ($("btn-fl-join")) $("btn-fl-join").onclick = flJoinRoom;
+// ---------------------------------------------------------------------------
+// Friend 1:1 Multiplayer Polling & Actions
+// ---------------------------------------------------------------------------
+function flApplyServerData(d, fromSubmit = false) {
+  if (!flState || flState.mode !== "friend") return;
+  const prevPhase = flState.mpPhase;
+  flState.roomId = d.room_id;
+  flState.hostId = d.host_id;
+  flState.mpPhase = d.phase;
+  flState.done = d.phase === "DONE";
+  if (d.me) {
+    flState.guesses = d.me.guesses || [];
+    flState.keyColors = rebuildFlKeyColors(flState.guesses);
+    flState.revealedAnswer = d.me.target_answer || "";
+  }
+  if (d.opp) {
+    flState.oppName = d.opp.name;
+    flState.oppTries = d.opp.tries;
+    flState.oppColors = d.opp.last_colors || Array(9).fill("");
+  }
+
+  if (prevPhase === "WAITING" && d.phase === "PLAYING") {
+    $("fl-banner").textContent = `⚔️ ${flState.oppName}님 입장! 지금부터 9칸 수식 레이스 시작!`;
+    $("fl-log").textContent = "상대보다 먼저 9칸 초록불을 켜면 결승전 우승!";
+    if (typeof SFX !== "undefined") SFX.myTurn();
+  } else if (d.phase === "DONE" && prevPhase !== "DONE") {
+    const iWon = d.winner_id === flState.playerId;
+    $("fl-banner").textContent = iWon
+      ? `🏆 결승전 우승! ${flState.oppName}님보다 먼저 정답을 맞혔습니다!`
+      : `💀 ${d.winner_name}님이 먼저 정답을 맞혔습니다!`;
+    $("fl-log").textContent = `내 정답 수식: ${flState.revealedAnswer}`;
+    if (typeof SFX !== "undefined") {
+      if (iWon) SFX.win();
+      else SFX.bust();
+    }
+  } else if (fromSubmit && flState.guesses.length > 0) {
+    const last = flState.guesses[flState.guesses.length - 1];
+    const g = last.colors.filter((c) => c === "g").length;
+    const y = last.colors.filter((c) => c === "y").length;
+    $("fl-banner").textContent = `🟩 초록 ${g}개 · 🟨 노랑 ${y}개 · 🟥 빨강 ${9 - g - y}개`;
+    if (typeof SFX !== "undefined") {
+      if (g >= 5) SFX.stay();
+      else SFX.cardFlip();
+    }
+  }
+  renderFormulaLight();
+}
+
+function flStartPoll() {
+  flStopPoll();
+  flPollTimer = setInterval(async () => {
+    if (!flState || flState.mode !== "friend" || !flState.roomId || !flState.playerId || flPollBusy) return;
+    flPollBusy = true;
+    try {
+      const res = await fetch(`/api/fl/${flState.roomId}?player_id=${encodeURIComponent(flState.playerId)}`);
+      if (res.ok) {
+        const out = await res.json();
+        if (out.data) flApplyServerData(out.data, false);
+      }
+    } catch (_) {
+    } finally {
+      flPollBusy = false;
+    }
+  }, 800);
+}
+
+function flShowFriendErr(msg) {
+  const el = $("fl-friend-err");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 3000);
+}
+
+async function flFriendCreate() {
+  const name = ($("fl-nick").value || "방장").trim();
+  const res = await fetch("/api/fl/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  const out = await res.json();
+  if (!res.ok || out.error) return flShowFriendErr(out.error || "방 생성 실패");
+  flState.roomId = out.room_id;
+  flState.playerId = out.player_id;
+  flApplyServerData(out.data);
+  flStartPoll();
+}
+
+async function flFriendJoin() {
+  const name = ($("fl-nick").value || "도전자").trim();
+  const code = ($("fl-code-in").value || "").trim().toUpperCase();
+  if (code.length < 4) return flShowFriendErr("4자리 방 코드를 입력하세요.");
+  const res = await fetch("/api/fl/join", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ room_id: code, name }),
+  });
+  const out = await res.json();
+  if (!res.ok || out.error) return flShowFriendErr(out.error || "입장 실패");
+  flState.roomId = out.room_id;
+  flState.playerId = out.player_id;
+  flApplyServerData(out.data);
+  flStartPoll();
+}
+
+async function flFriendRestart() {
+  if (!flState || !flState.roomId) return;
+  const res = await fetch(`/api/fl/${flState.roomId}/restart`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player_id: flState.playerId }),
+  });
+  const out = await res.json();
+  if (out.data) {
+    flState.input = "";
+    flApplyServerData(out.data);
+  }
+}
+
+if ($("btn-fl-create")) $("btn-fl-create").onclick = flFriendCreate;
+if ($("btn-fl-join")) $("btn-fl-join").onclick = flFriendJoin;
 if ($("btn-fl-copy-code")) {
   $("btn-fl-copy-code").onclick = () => {
     navigator.clipboard?.writeText(flState.roomId);
-    $("btn-fl-copy-code").textContent = "✅ 코드 복사됨!";
-    setTimeout(() => ($("btn-fl-copy-code").textContent = "📋 코드 복사"), 2000);
+    $("btn-fl-copy-code").textContent = "✅ 복사됨!";
+    setTimeout(() => ($("btn-fl-copy-code").textContent = "📋 코드 복사"), 1800);
   };
 }
 if ($("btn-fl-copy-link")) {
@@ -459,9 +460,14 @@ if ($("btn-fl-copy-link")) {
     const url = `${location.origin}/?fl_room=${flState.roomId}`;
     navigator.clipboard?.writeText(url);
     $("btn-fl-copy-link").textContent = "✅ 링크 복사됨!";
-    setTimeout(() => ($("btn-fl-copy-link").textContent = "🔗 초대 링크 복사"), 2000);
+    setTimeout(() => ($("btn-fl-copy-link").textContent = "🔗 초대 링크 복사"), 1800);
   };
 }
+
+// Mode switch buttons
+document.querySelectorAll(".fl-mode-btn").forEach((btn) => {
+  btn.addEventListener("click", () => startFormulaLightGame(btn.dataset.mode));
+});
 
 // Physical keyboard support
 window.addEventListener("keydown", (e) => {
@@ -477,24 +483,24 @@ window.addEventListener("keydown", (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// Formula Light Interactive 4-Slide Rule Guide & Simulator
+// Formula Light Interactive 4-Slide Swipeable Guide & Simulator
 // ---------------------------------------------------------------------------
 let flGuideIdx = 0;
-const FL_SLIDES = 4;
+const FL_TOTAL_SLIDES = 4;
 
 function setFlGuideSlide(idx) {
-  flGuideIdx = Math.max(0, Math.min(FL_SLIDES - 1, idx));
+  flGuideIdx = Math.max(0, Math.min(FL_TOTAL_SLIDES - 1, idx));
   $("fl-guide-track").style.transform = `translateX(-${flGuideIdx * 100}%)`;
   const dots = $("fl-guide-dots");
   dots.innerHTML = "";
-  for (let i = 0; i < FL_SLIDES; i++) {
+  for (let i = 0; i < FL_TOTAL_SLIDES; i++) {
     const d = document.createElement("span");
     d.className = "g-dot" + (i === flGuideIdx ? " active" : "");
     d.onclick = () => setFlGuideSlide(i);
     dots.appendChild(d);
   }
   $("btn-fl-guide-prev").style.opacity = flGuideIdx === 0 ? "0.35" : "1";
-  $("btn-fl-guide-next").textContent = flGuideIdx === FL_SLIDES - 1 ? "게임하기 ▶" : "다음 ▶";
+  $("btn-fl-guide-next").textContent = flGuideIdx === FL_TOTAL_SLIDES - 1 ? "게임하기 ▶" : "다음 ▶";
 }
 
 if ($("btn-fl-rules")) {
@@ -503,63 +509,61 @@ if ($("btn-fl-rules")) {
     $("modal-fl-rules").classList.remove("hidden");
   };
 }
+if ($("btn-close-fl-guide")) {
+  $("btn-close-fl-guide").onclick = () => $("modal-fl-rules").classList.add("hidden");
+}
+if ($("modal-fl-rules")) {
+  const bd = $("modal-fl-rules").querySelector(".modal-backdrop");
+  if (bd) bd.onclick = () => $("modal-fl-rules").classList.add("hidden");
+}
 if ($("btn-fl-guide-prev")) $("btn-fl-guide-prev").onclick = () => setFlGuideSlide(flGuideIdx - 1);
 if ($("btn-fl-guide-next")) {
   $("btn-fl-guide-next").onclick = () => {
-    if (flGuideIdx === FL_SLIDES - 1) $("modal-fl-rules").classList.add("hidden");
+    if (flGuideIdx === FL_TOTAL_SLIDES - 1) $("modal-fl-rules").classList.add("hidden");
     else setFlGuideSlide(flGuideIdx + 1);
   };
 }
 
+// Swipe gesture for FL Guide
 let flTouchX = 0;
-const flVp = $("fl-guide-viewport");
-if (flVp) {
-  flVp.addEventListener("touchstart", (e) => (flTouchX = e.touches[0].clientX), { passive: true });
-  flVp.addEventListener("touchend", (e) => {
-    const d = e.changedTouches[0].clientX - flTouchX;
-    if (d < -42) setFlGuideSlide(flGuideIdx + 1);
-    else if (d > 42) setFlGuideSlide(flGuideIdx - 1);
+if ($("fl-guide-viewport")) {
+  $("fl-guide-viewport").addEventListener("touchstart", (e) => { flTouchX = e.touches[0].clientX; }, { passive: true });
+  $("fl-guide-viewport").addEventListener("touchend", (e) => {
+    const diff = e.changedTouches[0].clientX - flTouchX;
+    if (diff < -42) setFlGuideSlide(flGuideIdx + 1);
+    else if (diff > 42) setFlGuideSlide(flGuideIdx - 1);
   });
 }
 
+// Slide 3 Simulator
 function runFlSim(guess) {
   const ans = "2^5+18=50";
   const cols = evaluateTrafficLight(guess, ans);
   const row = $("fl-sim-row");
   row.innerHTML = "";
   for (let i = 0; i < 9; i++) {
-    const cell = document.createElement("div");
-    cell.className = `fl-cell ${cols[i]}`;
-    cell.textContent = guess[i];
-    row.appendChild(cell);
+    const c = document.createElement("div");
+    c.className = `fl-cell ${cols[i]}`;
+    c.textContent = guess[i];
+    row.appendChild(c);
   }
-  const g = cols.filter((c) => c === "g").length;
-  const y = cols.filter((c) => c === "y").length;
+  const g = cols.filter((x) => x === "g").length;
+  const y = cols.filter((x) => x === "y").length;
   $("fl-sim-msg").textContent =
     g === 9
-      ? "🏆 9칸 모두 초록불! 결승전 승리!"
-      : `🟩 초록 ${g} · 🟨 노랑 ${y} · 🟥 빨강 ${9 - g - y} (정답 2^5+18=50 기준)`;
+      ? "🏆 9칸 모두 초록불! 정답 적중!"
+      : `🟩 ${g}개 · 🟨 ${y}개 · 🟥 ${9 - g - y}개 — 계산이 틀려도 힌트를 얻었습니다!`;
   if (typeof SFX !== "undefined") {
     if (g === 9) SFX.win();
     else SFX.cardFlip();
   }
 }
-
 if ($("btn-fl-sim-dummy")) $("btn-fl-sim-dummy").onclick = () => runFlSim("123456789");
 if ($("btn-fl-sim-solve")) $("btn-fl-sim-solve").onclick = () => runFlSim("2^5+18=50");
 
-// Auto-open Formula Light Friend tab if ?fl_room=XXXX in URL
+// Auto-open Friend 1:1 if URL has ?fl_room=XXXX
 const flUrlCode = new URLSearchParams(window.location.search).get("fl_room");
 if (flUrlCode) {
   startFormulaLightGame("friend");
   if ($("fl-code-in")) $("fl-code-in").value = flUrlCode.toUpperCase();
-}
-
-// Close Formula Light guide modal via X or backdrop
-if ($("btn-close-fl-guide")) {
-  $("btn-close-fl-guide").onclick = () => $("modal-fl-rules").classList.add("hidden");
-}
-const flModalBackdrop = document.querySelector("#modal-fl-rules .modal-backdrop");
-if (flModalBackdrop) {
-  flModalBackdrop.onclick = () => $("modal-fl-rules").classList.add("hidden");
 }
