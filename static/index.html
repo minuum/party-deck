@@ -8,6 +8,63 @@
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
+  <!-- LEFT PATCH NOTES & LIVE STATUS PANEL -->
+  <button id="btn-patch-toggle" class="patch-fab" type="button">📋 패치노트</button>
+  <aside id="patch-panel" class="patch-panel">
+    <div class="patch-head">
+      <div>
+        <div class="patch-eyebrow">PARTY-DECK · LIVE</div>
+        <div class="patch-title">패치노트 &amp; 상태</div>
+      </div>
+      <button id="btn-patch-close" class="patch-close" type="button">✕</button>
+    </div>
+
+    <div class="patch-section">
+      <div class="patch-sec-title">실시간 기능 상태</div>
+      <ul class="status-list" id="live-status-list">
+        <li><span>웹 서버</span><span class="st-badge ok" id="st-server">확인 중</span></li>
+        <li><span>Redis 저장소 (쓰기)</span><span class="st-badge warn" id="st-redis">확인 중</span></li>
+        <li><span>🤖 1인 AI 대전</span><span class="st-badge ok" id="st-solo">정상</span></li>
+        <li><span>👑 멀티플레이 방/초대</span><span class="st-badge ok" id="st-multi">정상</span></li>
+        <li><span>📜 규칙 &amp; 시뮬레이션</span><span class="st-badge ok">정상</span></li>
+      </ul>
+      <div id="st-redis-hint" class="status-hint hidden"></div>
+    </div>
+
+    <div class="patch-section">
+      <div class="patch-sec-title">최근 패치 내역</div>
+      <div class="patch-notes">
+        <div class="patch-item latest">
+          <div class="patch-ver">v1.4 <span>방금 전</span></div>
+          <ul>
+            <li>왼쪽 패치노트 &amp; 실시간 기능 상태판 추가</li>
+            <li>Redis 쓰기 권한(Read-Only 토큰) 자동 진단</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v1.3</div>
+          <ul>
+            <li>멀티플레이 대기실 <strong>방장 / 참가자</strong> 구분 배지 &amp; 5인 슬롯 표시</li>
+            <li>방 코드 복사 &amp; 초대 링크 복사 분리</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v1.2</div>
+          <ul>
+            <li>6단계 스와이프 애니메이션 규칙 가이드 추가</li>
+            <li>주사위·카드 플립·HIT/STAY·1라운드 자동 시뮬레이션 구현</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v1.1</div>
+          <ul>
+            <li>Vercel 서버리스 + Upstash Redis + HTTP Polling 구조 전환</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </aside>
+
   <div id="app">
     <!-- HOME / LOBBY SCREEN -->
     <section id="screen-home" class="screen active">

@@ -664,3 +664,50 @@ $("btn-rules").onclick = () => {
   renderAutoStep(AUTO_STEPS[0]);
   origOpenGame();
 };
+
+// ---------------------------------------------------------------------------
+// Left Patch Notes & Live Health Status
+// ---------------------------------------------------------------------------
+$("btn-patch-toggle").onclick = () => $("patch-panel").classList.toggle("open");
+$("btn-patch-close").onclick = () => $("patch-panel").classList.remove("open");
+
+async function checkLiveStatus() {
+  try {
+    const res = await fetch("/api/health");
+    const h = await res.json();
+    const setBadge = (id, text, cls) => {
+      const el = $(id);
+      if (!el) return;
+      el.textContent = text;
+      el.className = "st-badge " + cls;
+    };
+    setBadge("st-server", h.ok ? "정상" : "오류", h.ok ? "ok" : "err");
+
+    if (!h.redis) {
+      setBadge("st-redis", "로컬 메모리", "warn");
+      setBadge("st-solo", "정상", "ok");
+      setBadge("st-multi", "로컬 전용", "warn");
+    } else if (h.redis_ok && h.redis_write_ok) {
+      setBadge("st-redis", "정상 (R/W)", "ok");
+      setBadge("st-solo", "정상", "ok");
+      setBadge("st-multi", "정상", "ok");
+      $("st-redis-hint").classList.add("hidden");
+    } else if (h.redis_detail === "READ_ONLY_TOKEN") {
+      setBadge("st-redis", "읽기 전용!", "err");
+      setBadge("st-solo", "쓰기 불가", "err");
+      setBadge("st-multi", "쓰기 불가", "err");
+      $("st-redis-hint").textContent = "⚠️ Upstash 읽기 전용 토큰이 설정되어 있습니다. Vercel 환경변수를 일반(Read/Write) 토큰으로 변경 후 Redeploy 해주세요.";
+      $("st-redis-hint").classList.remove("hidden");
+    } else {
+      setBadge("st-redis", "연결 오류", "err");
+      setBadge("st-solo", "점검 필요", "err");
+      setBadge("st-multi", "점검 필요", "err");
+      $("st-redis-hint").textContent = `⚠️ Redis 오류: ${h.redis_detail}`;
+      $("st-redis-hint").classList.remove("hidden");
+    }
+  } catch (_) {
+    const el = $("st-server");
+    if (el) { el.textContent = "오프라인"; el.className = "st-badge err"; }
+  }
+}
+checkLiveStatus();

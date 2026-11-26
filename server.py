@@ -63,12 +63,18 @@ class RoomStore:
 
     def ping(self):
         if not self.use_redis:
-            return False, "not_configured"
+            return False, False, "local_memory"
         try:
             res = self._redis_cmd("PING")
-            return res == "PONG", str(res)
+            if res != "PONG":
+                return False, False, str(res)
+            self._redis_cmd("SET", "hs:health_check", "1", "EX", "10")
+            return True, True, "PONG+WRITE_OK"
         except Exception as e:
-            return False, f"{type(e).__name__}: {e}"
+            err = f"{type(e).__name__}: {e}"
+            if "NOPERM" in err:
+                return True, False, "READ_ONLY_TOKEN"
+            return False, False, err
 
     def get_room(self, room_id: str) -> Optional["GameRoom"]:
         key = f"hs:room:{room_id}"
@@ -770,11 +776,12 @@ async def index():
 
 @app.get("/api/health")
 async def health():
-    redis_ok, redis_detail = STORE.ping()
+    redis_ok, redis_write_ok, redis_detail = STORE.ping()
     return {
         "ok": True,
         "redis": STORE.use_redis,
         "redis_ok": redis_ok,
+        "redis_write_ok": redis_write_ok,
         "redis_detail": redis_detail,
     }
 
