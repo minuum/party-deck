@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HIT, STAY — Rules</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    width: 960px;
+    background: #09090d;
+    color: #f3f1ea;
+    font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 36px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .frame {
+    position: relative;
+    background: radial-gradient(circle at 50% 0%, #1d1712 0%, #0e0e14 55%, #09090d 100%);
+    border: 1.5px solid rgba(212, 175, 55, 0.38);
+    border-radius: 20px;
+    padding: 36px 38px 32px;
+    box-shadow: 0 0 60px rgba(212, 175, 55, 0.08), inset 0 0 40px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+  }
+  .frame::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, #d4af37, #f7df8c, #d4af37, transparent);
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+    margin-bottom: 24px;
+  }
+  .eyebrow {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3.5px;
+    color: #d4af37;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .title {
+    font-size: 54px;
+    font-weight: 900;
+    letter-spacing: 5px;
+    line-height: 1.08;
+    background: linear-gradient(180deg, #fff5d1 0%, #e5be53 55%, #a87e22 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 10px;
+  }
+  .subtitle {
+    font-size: 16px;
+    color: #c8c4b8;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+  }
+
+  /* Section Titles */
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #e8c766;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .section-title .bar {
+    width: 4px;
+    height: 16px;
+    background: #d4af37;
+    border-radius: 2px;
+  }
+
+  /* Top Grid: Setup + Deck */
+  .top-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+  .panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .info-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+  .info-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14.5px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    padding-bottom: 8px;
+  }
+  .info-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .info-label {
+    color: #9e9b93;
+    font-weight: 600;
+  }
+  .info-val {
+    color: #ffffff;
+    font-weight: 700;
+    text-align: right;
+  }
+  .highlight-gold {
+    color: #f3d273;
+  }
+
+  /* Card Deck Visualization */
+  .deck-sub {
+    font-size: 13px;
+    color: #9e9b93;
+    margin-top: -8px;
+    margin-bottom: 14px;
+  }
+  .cards-row {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 7px;
+  }
+  .mini-card {
+    background: linear-gradient(160deg, #242430 0%, #15151d 100%);
+    border: 1.5px solid rgba(212, 175, 55, 0.45);
+    border-radius: 9px;
+    padding: 10px 4px 8px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  .mini-card.minus {
+    background: linear-gradient(160deg, #3a151c 0%, #1d0c10 100%);
+    border-color: rgba(235, 87, 87, 0.7);
+  }
+  .card-num {
+    font-size: 22px;
+    font-weight: 900;
+    color: #f7df8c;
+    line-height: 1;
+  }
+  .mini-card.minus .card-num {
+    color: #ff6b6b;
+  }
+  .card-cnt {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #c7c3b8;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 6px;
+    border-radius: 99px;
+  }
+  .deck-note {
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: #b7b3a8;
+    line-height: 1.5;
+    word-break: keep-all;
+  }
+
+  /* Round Flow */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .step-card {
+    background: rgba(255, 255, 255, 0.032);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    padding: 16px 17px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .step-card.featured {
+    background: linear-gradient(160deg, rgba(212, 175, 55, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%);
+    border-color: rgba(212, 175, 55, 0.45);
+  }
+  .step-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #d4af37;
+    color: #0b0b0f;
+    font-size: 13px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+  .step-desc {
+    font-size: 13.3px;
+    color: #ccc8bd;
+    line-height: 1.55;
+    word-break: keep-all;
+  }
+  .step-desc strong {
+    color: #f7df8c;
+    font-weight: 700;
+  }
+  .badge-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .badge {
+    font-size: 11.5px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.4px;
+  }
+  .badge.hit {
+    background: rgba(46, 204, 113, 0.18);
+    color: #5ee695;
+    border: 1px solid rgba(46, 204, 113, 0.45);
+  }
+  .badge.stay {
+    background: rgba(241, 196, 15, 0.18);
+    color: #f7df8c;
+    border: 1px solid rgba(241, 196, 15, 0.45);
+  }
+
+  /* Rules Footer Grid: Win / Tie / Bust */
+  .outcomes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .outcome {
+    border-radius: 14px;
+    padding: 16px 18px;
+    border: 1px solid;
+  }
+  .outcome.win {
+    background: rgba(46, 204, 113, 0.08);
+    border-color: rgba(46, 204, 113, 0.35);
+  }
+  .outcome.tie {
+    background: rgba(52, 152, 219, 0.08);
+    border-color: rgba(52, 152, 219, 0.35);
+  }
+  .outcome.bust {
+    background: rgba(231, 76, 60, 0.09);
+    border-color: rgba(231, 76, 60, 0.4);
+  }
+  .outcome-tag {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+    margin-bottom: 6px;
+  }
+  .outcome.win .outcome-tag { color: #5ee695; }
+  .outcome.tie .outcome-tag { color: #67b8f5; }
+  .outcome.bust .outcome-tag { color: #ff7675; }
+  .outcome-text {
+    font-size: 13.5px;
+    color: #e4e1d8;
+    line-height: 1.5;
+    word-break: keep-all;
+  }
+  .outcome-text strong {
+    color: #ffffff;
+  }
+
+  /* Footer */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 12px;
+    color: #827f78;
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="header">
+      <div class="eyebrow">The Devil's Plan : Dead Again &nbsp;·&nbsp; Day 6 Main Match</div>
+      <div class="title">HIT, STAY</div>
+      <div class="subtitle">한계 숫자를 초과하지 않으면서 가장 가까운 합을 만들어 칩을 쟁취하는 5인 생존 베팅 게임</div>
+    </div>
+
+    <div class="top-grid">
+      <div class="panel">
+        <div class="section-title"><span class="bar"></span>기본 설정 (Setup)</div>
+        <ul class="info-list">
+          <li>
+            <span class="info-label">참여 인원</span>
+            <span class="info-val">5명 (선 플레이어부터 시계 방향)</span>
+          </li>
+          <li>
+            <span class="info-label">초기 칩</span>
+            <span class="info-val highlight-gold">각 30개 <span style="font-size:12px;color:#aaa;font-weight:500;">(개인의 이익 +10)</span></span>
+          </li>
+          <li>
+            <span class="info-label">한계 숫자</span>
+            <span class="info-val highlight-gold">8면체 주사위 (5 ~ 12)</span>
+          </li>
+          <li>
+            <span class="info-label">최대 베팅 제한</span>
+            <span class="info-val">최소 칩 보유자 잔액 이하</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <div class="section-title"><span class="bar"></span>숫자 카드 구성 (총 35장)</div>
+        <div class="deck-sub">높은 숫자일수록 장수가 적고, 음수(-1) 카드가 7장 포함됨</div>
+        <div class="cards-row">
+          <div class="mini-card"><div class="card-num">7</div><div class="card-cnt">1장</div></div>
+          <div class="mini-card"><div class="card-num">6</div><div class="card-cnt">2장</div></div>
+          <div class="mini-card"><div class="card-num">5</div><div class="card-cnt">3장</div></div>
+          <div class="mini-card"><div class="card-num">4</div><div class="card-cnt">4장</div></div>
+          <div class="mini-card"><div class="card-num">3</div><div class="card-cnt">5장</div></div>
+          <div class="mini-card"><div class="card-num">2</div><div class="card-cnt">6장</div></div>
+          <div class="mini-card"><div class="card-num">1</div><div class="card-cnt">7장</div></div>
+          <div class="mini-card minus"><div class="card-num">-1</div><div class="card-cnt">7장</div></div>
+        </div>
+        <div class="deck-note">
+          <strong style="color:#f3d273;">핵심 전략</strong> · 공개 카드와 HIT 카드를 추적하는 <strong>카드 카운팅</strong> 및 <strong>-1 카드</strong> 심리전
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title"><span class="bar"></span>라운드 진행 순서 (Round Flow)</div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div class="step-name">한계 숫자 &amp; 기본 베팅</div>
+        </div>
+        <div class="step-desc">
+          딜러가 <strong>8면체 주사위(5~12)</strong>를 굴려 한계 숫자를 정합니다. (2라운드마다 갱신)<br/>
+          전원 기본 베팅 칩을 제출하며 라운드가 지날수록 증가합니다.
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div class="step-name">카드 3장 배분 &amp; 1장 공개</div>
+        </div>
+        <div class="step-desc">
+          각 플레이어는 카드 <strong>3장</strong>을 받습니다.<br/>
+          그중 <strong>1장을 선택해 전체 공개</strong>하고, 나머지 2장은 본인만 확인합니다.
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head">
+          <div class="step-num">3</div>
+          <div class="step-name">1차 베팅</div>
+        </div>
+        <div class="step-desc">
+          선 플레이어부터 순서대로 <strong>콜(Call) · 레이즈(Raise) · 포기(Fold)</strong> 중 하나를 선택해 1차 베팅을 진행합니다.
+        </div>
+      </div>
+
+      <div class="step-card featured">
+        <div class="step-head">
+          <div class="step-num">4</div>
+          <div class="step-name">HIT 또는 STAY 선택</div>
+        </div>
+        <div class="badge-row">
+          <span class="badge hit">HIT : +1장 (전체 공개)</span>
+          <span class="badge stay">STAY : 멈춤</span>
+        </div>
+        <div class="step-desc">
+          포기하지 않은 플레이어가 순서대로 선택합니다. 전원 <strong>STAY</strong>하거나 덱이 소진될 때까지 반복합니다.
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head">
+          <div class="step-num">5</div>
+          <div class="step-name">2차 최종 베팅</div>
+        </div>
+        <div class="step-desc">
+          모든 카드 수령이 끝난 뒤, 공개된 패를 바탕으로 마지막 <strong>콜 · 레이즈 · 포기</strong> 베팅을 진행합니다.
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head">
+          <div class="step-num">6</div>
+          <div class="step-name">카드 공개 &amp; 팟 정산</div>
+        </div>
+        <div class="step-desc">
+          끝까지 남은 플레이어가 모든 카드를 공개합니다. 승리 조건을 만족한 플레이어가 <strong>팟(Pot) 전체</strong>를 획득합니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title"><span class="bar"></span>승패 판정 &amp; 탈락 조건 (Win / Tie / Bust)</div>
+    <div class="outcomes-grid">
+      <div class="outcome win">
+        <div class="outcome-tag">WIN · 승리</div>
+        <div class="outcome-text">
+          보유 카드의 총합이 <strong>한계 숫자 이하</strong>이면서 <strong>가장 가까운 플레이어</strong>가 해당 라운드의 팟(Pot)을 독식합니다.
+        </div>
+      </div>
+      <div class="outcome tie">
+        <div class="outcome-tag">TIE-BREAK · 동점</div>
+        <div class="outcome-text">
+          카드 총합이 같은 경우, <strong>보유한 카드 장수가 더 많은 쪽</strong>이 승리합니다. (-1 카드 보유 시 유리)
+        </div>
+      </div>
+      <div class="outcome bust">
+        <div class="outcome-tag">BUST &amp; OUT · 버스트/탈락</div>
+        <div class="outcome-text">
+          합이 한계 숫자를 <strong>초과하면 버스트(최하위 패배)</strong> 처리됩니다. 칩을 모두 잃으면 <strong>탈락</strong>하며 최후 1인이 우승합니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>THE DEVIL'S PLAN : DEAD AGAIN — GAME RULE CARD</span>
+      <span>6일차 메인매치 〈HIT, STAY〉</span>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HIT, STAY — Card Design Showcase</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    width: 1040px;
+    background: #08080c;
+    color: #f3f1ea;
+    font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 36px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .frame {
+    position: relative;
+    background: radial-gradient(circle at 50% 0%, #1c1611 0%, #0d0d13 55%, #08080c 100%);
+    border: 1.5px solid rgba(212, 175, 55, 0.38);
+    border-radius: 22px;
+    padding: 36px 38px 30px;
+    box-shadow: 0 0 60px rgba(212, 175, 55, 0.08), inset 0 0 40px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+  }
+  .frame::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, #d4af37, #f7df8c, #d4af37, transparent);
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding-bottom: 22px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+    margin-bottom: 26px;
+  }
+  .eyebrow {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 3.5px;
+    color: #d4af37;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .title {
+    font-size: 40px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    background: linear-gradient(180deg, #fff5d1 0%, #e5be53 55%, #a87e22 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 15px;
+    color: #c4c0b4;
+  }
+
+  /* Section Title */
+  .section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #e8c766;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .section-left .bar {
+    width: 4px;
+    height: 16px;
+    background: #d4af37;
+    border-radius: 2px;
+  }
+  .section-right {
+    font-size: 12.5px;
+    color: #9e9b93;
+    font-weight: 600;
+  }
+
+  /* Playing Card Grid */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 18px;
+    margin-bottom: 28px;
+  }
+
+  .card-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+  }
+
+  /* Realistic Playing Card */
+  .playing-card {
+    width: 158px;
+    height: 226px;
+    border-radius: 14px;
+    position: relative;
+    padding: 10px;
+    background: linear-gradient(155deg, #21212b 0%, #121218 65%, #0c0c11 100%);
+    border: 1.5px solid rgba(212, 175, 55, 0.55);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 245, 209, 0.18),
+      inset 0 0 24px rgba(212, 175, 55, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+  .playing-card::after {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: 1px solid rgba(212, 175, 55, 0.22);
+    border-radius: 9px;
+    pointer-events: none;
+  }
+
+  /* Special Tier Accents */
+  .playing-card.rare {
+    background: linear-gradient(155deg, #2b2313 0%, #17130c 65%, #0e0c08 100%);
+    border-color: rgba(245, 206, 91, 0.85);
+    box-shadow:
+      0 12px 26px rgba(0, 0, 0, 0.65),
+      0 0 22px rgba(212, 175, 55, 0.16),
+      inset 0 1px 0 rgba(255, 245, 209, 0.3);
+  }
+  .playing-card.minus {
+    background: linear-gradient(155deg, #36131a 0%, #1c0b0f 65%, #12070a 100%);
+    border-color: rgba(235, 87, 87, 0.8);
+    box-shadow:
+      0 12px 26px rgba(0, 0, 0, 0.65),
+      0 0 20px rgba(235, 87, 87, 0.14),
+      inset 0 1px 0 rgba(255, 160, 160, 0.22);
+  }
+  .playing-card.minus::after {
+    border-color: rgba(235, 87, 87, 0.28);
+  }
+
+  /* Corner Index */
+  .corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    z-index: 2;
+    width: 24px;
+  }
+  .corner.bottom {
+    align-self: flex-end;
+    transform: rotate(180deg);
+  }
+  .corner-num {
+    font-size: 20px;
+    font-weight: 900;
+    color: #f3d273;
+    letter-spacing: -0.5px;
+  }
+  .playing-card.minus .corner-num {
+    color: #ff7675;
+  }
+  .corner-suit {
+    font-size: 10px;
+    color: rgba(212, 175, 55, 0.7);
+    margin-top: 2px;
+  }
+  .playing-card.minus .corner-suit {
+    color: rgba(255, 118, 117, 0.75);
+  }
+
+  /* Center Art */
+  .card-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
+  .center-ring {
+    width: 82px;
+    height: 82px;
+    border-radius: 50%;
+    border: 1px solid rgba(212, 175, 55, 0.24);
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .playing-card.minus .center-ring {
+    border-color: rgba(235, 87, 87, 0.3);
+    background: radial-gradient(circle, rgba(235, 87, 87, 0.14) 0%, transparent 70%);
+  }
+  .center-num {
+    font-size: 62px;
+    font-weight: 900;
+    line-height: 1;
+    background: linear-gradient(180deg, #fff6d6 0%, #e5be53 60%, #9f751b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -2px;
+  }
+  .playing-card.minus .center-num {
+    font-size: 56px;
+    background: linear-gradient(180deg, #ffd1d1 0%, #ff6b6b 55%, #b82b2b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding-right: 4px;
+  }
+
+  /* Card Back */
+  .playing-card.back {
+    background: linear-gradient(155deg, #171722 0%, #0d0d14 100%);
+    border-color: rgba(212, 175, 55, 0.5);
+    padding: 12px;
+  }
+  .back-pattern {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    background-image:
+      repeating-linear-gradient(45deg, rgba(212, 175, 55, 0.06) 0, rgba(212, 175, 55, 0.06) 2px, transparent 2px, transparent 10px),
+      repeating-linear-gradient(-45deg, rgba(212, 175, 55, 0.06) 0, rgba(212, 175, 55, 0.06) 2px, transparent 2px, transparent 10px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .back-diamond {
+    width: 54px;
+    height: 54px;
+    border: 1.5px solid #d4af37;
+    transform: rotate(45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 13, 20, 0.9);
+    box-shadow: 0 0 18px rgba(212, 175, 55, 0.2);
+  }
+  .back-diamond span {
+    transform: rotate(-45deg);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #f3d273;
+  }
+  .back-label {
+    margin-top: 8px;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: rgba(212, 175, 55, 0.75);
+  }
+
+  /* Slot Caption */
+  .slot-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #d8d4c8;
+  }
+  .pill {
+    font-size: 11.5px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: rgba(212, 175, 55, 0.16);
+    color: #f3d273;
+    border: 1px solid rgba(212, 175, 55, 0.35);
+  }
+  .pill.red {
+    background: rgba(235, 87, 87, 0.16);
+    color: #ff7675;
+    border-color: rgba(235, 87, 87, 0.4);
+  }
+  .pill.gray {
+    background: rgba(255, 255, 255, 0.08);
+    color: #c2beb3;
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  /* Hand Example Section */
+  .example-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .example-left {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 310px;
+  }
+  .target-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(212, 175, 55, 0.15);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #f7df8c;
+    width: fit-content;
+  }
+  .example-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+  .example-desc {
+    font-size: 13.5px;
+    color: #c4c0b4;
+    line-height: 1.55;
+    word-break: keep-all;
+  }
+  .example-desc strong {
+    color: #5ee695;
+  }
+
+  .hand-cards {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .mini-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+  }
+  .playing-card.sm {
+    width: 112px;
+    height: 160px;
+    border-radius: 11px;
+    padding: 8px;
+  }
+  .playing-card.sm::after {
+    inset: 5px;
+    border-radius: 7px;
+  }
+  .playing-card.sm .corner-num {
+    font-size: 15px;
+  }
+  .playing-card.sm .corner-suit {
+    font-size: 8px;
+  }
+  .playing-card.sm .center-ring {
+    width: 58px;
+    height: 58px;
+  }
+  .playing-card.sm .center-num {
+    font-size: 42px;
+  }
+  .playing-card.sm.minus .center-num {
+    font-size: 38px;
+  }
+  .state-tag {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .state-tag.open {
+    background: rgba(52, 152, 219, 0.18);
+    color: #67b8f5;
+    border: 1px solid rgba(52, 152, 219, 0.4);
+  }
+  .state-tag.secret {
+    background: rgba(255, 255, 255, 0.08);
+    color: #c4c0b4;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .state-tag.hit {
+    background: rgba(46, 204, 113, 0.18);
+    color: #5ee695;
+    border: 1px solid rgba(46, 204, 113, 0.45);
+  }
+
+  .footer {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #827f78;
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="header">
+      <div class="eyebrow">The Devil's Plan : Dead Again · Card Deck Design</div>
+      <div class="title">HIT, STAY — CARD SET</div>
+      <div class="subtitle">게임에 사용되는 8종 숫자 카드(총 35장)와 뒷면 디자인 및 실전 손패 예시</div>
+    </div>
+
+    <div class="section-title">
+      <div class="section-left"><span class="bar"></span>전체 카드 구성 (8종 · 총 35장 + 뒷면)</div>
+      <div class="section-right">모바일 웹 게임에 적용될 카드 디자인 프리뷰</div>
+    </div>
+
+    <div class="card-grid">
+      <!-- 7 -->
+      <div class="card-slot">
+        <div class="playing-card rare">
+          <div class="corner"><span class="corner-num">7</span><span class="corner-suit">◆</span></div>
+          <div class="card-center"><div class="center-ring"><span class="center-num">7</span></div></div>
+          <div class="corner bottom"><span class="corner-num">7</span><span class="corner-suit">◆</span></div>
+        </div>
+        <div class="slot-meta"><span>숫자 7</span><span class="pill">1장</span></div>
+      </div>
+
+      <!-- 6 -->
+      <div class="card-slot">
+        <div class="playing-card rare">
+          <div class="corner"><span class="corner-num">6</span><span class="corner-suit">◆</span></div>
+          <div class="card-center"><div class="center-ring"><span class="center-num">6</span></div></div>
+          <div class="corner bottom"><span class="corner-num">6</span><span class="corner-suit">◆</span></div>
+        </div>
+        <div class="slot-meta"><span>숫자 6</span><span class="pill">2장</span></div>
+      </div>
+
+      <!-- 5 -->
+      <div class="card-slot">
+        <div class="playing-card">
+          <div class="corner"><span class="corner-num">5</span><span class="corner-suit">◆</span></div>
+          <div class="card-center"><div class="center-ring"><span class="center-num">5</span></div></div>
+          <div class="corner bottom"><span class="corner-num">5</span><span class="corner-suit">◆</span></div>
+        </div>
+        <div class="slot-meta"><span>숫자 5</span><span class="pill">3장</span></div>
+      </div>
+
+      <!-- 4 -->
+      <div class="card-slot">
+        <div class="playing-card">
+          <div class="corner"><span class="corner-num">4</span><span class="corner-suit">◆</span></div>
+          <div class="card-center"><div class="center-ring"><span class="center-num">4</span></div></div>
+          <div class="corner bottom"><span class="corner-num">4</span><span class="corner-suit">◆</span></div>
+        </div>
+        <div class="slot-meta"><span>숫자 4</span><span class="pill">4장</span></div>
+      </div>
+
+      <!-- 3 -->
+      <div class="card-slot">
+        <div class="playing-card">
+          <div class="corner"><span class="corner-num">3</span><span class="corner-suit">◆</span></div>
+          <div class="card-center"><div class="center-ring"><span class="center-num">3</span></div></div>
+          <div class="corner bottom"><span class="corner-num">3</span><span class="corner-suit">◆</span></div>
+        </div>
+        <div class="slot-meta"><span>숫자 3</span><span class="pill">5장</span></div>
+      </div>
+
+      <!-- 2 -->
+      <div class="card-slot">
+        <div class="playing-card">
+          <div class="corner"><span class="corner-num">2</span><span class="corner-suit">◆</span></div>
+          <div class="card-center"><div class="center-ring"><span class="center-num">2</span></div></div>
+          <div class="corner bottom"><span class="corner-num">2</span><span class="corner-suit">◆</span></div>
+        </div>
+        <div class="slot-meta"><span>숫자 2</span><span class="pill">6장</span></div>
+      </div>
+
+      <!-- 1 -->
+      <div class="card-slot">
+        <div class="playing-card">
+          <div class="corner"><span class="corner-num">1</span><span class="corner-suit">◆</span></div>
+          <div class="card-center"><div class="center-ring"><span class="center-num">1</span></div></div>
+          <div class="corner bottom"><span class="corner-num">1</span><span class="corner-suit">◆</span></div>
+        </div>
+        <div class="slot-meta"><span>숫자 1</span><span class="pill">7장</span></div>
+      </div>
+
+      <!-- -1 -->
+      <div class="card-slot">
+        <div class="playing-card minus">
+          <div class="corner"><span class="corner-num">-1</span><span class="corner-suit">▼</span></div>
+          <div class="card-center"><div class="center-ring"><span class="center-num">-1</span></div></div>
+          <div class="corner bottom"><span class="corner-num">-1</span><span class="corner-suit">▼</span></div>
+        </div>
+        <div class="slot-meta"><span>음수 -1</span><span class="pill red">7장</span></div>
+      </div>
+
+      <!-- Card Back -->
+      <div class="card-slot">
+        <div class="playing-card back">
+          <div class="back-pattern">
+            <div class="back-diamond"><span>DP</span></div>
+            <div class="back-label">HIT · STAY</div>
+          </div>
+        </div>
+        <div class="slot-meta"><span>비공개 뒷면</span><span class="pill gray">HIDDEN</span></div>
+      </div>
+
+      <!-- Card Back Info / Empty Slot -->
+      <div class="card-slot" style="justify-content:center;">
+        <div style="width:158px;height:226px;border-radius:14px;border:1px dashed rgba(212,175,55,0.3);background:rgba(255,255,255,0.02);padding:18px;display:flex;flex-direction:column;justify-content:center;gap:10px;text-align:center;">
+          <div style="font-size:12px;font-weight:800;color:#e8c766;letter-spacing:1px;">DECK SUMMARY</div>
+          <div style="font-size:26px;font-weight:900;color:#fff;">35장</div>
+          <div style="font-size:12px;color:#b4b0a5;line-height:1.5;word-break:keep-all;">
+            양수 28장 (1~7)<br/>음수 7장 (-1)<br/>총합 평균 ≈ 2.29
+          </div>
+        </div>
+        <div class="slot-meta"><span>덱 총계</span><span class="pill gray">TOTAL</span></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <div class="section-left"><span class="bar"></span>실전 손패 예시 (In-Game Hand Example)</div>
+      <div class="section-right">공개 1장 + 비공개 2장 + 추가 HIT 1장</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-left">
+        <div class="target-badge">🎲 이번 라운드 한계 숫자 : 10</div>
+        <div class="example-title">합계 10 (4장) — 버스트 회피 &amp; 타이브레이크 우위!</div>
+        <div class="example-desc">
+          초기 공개 카드 <strong>5</strong>, 비공개 <strong>4 + 2</strong>로 합이 11(버스트) 위기였으나,<br/>
+          <strong>HIT</strong>으로 <strong>-1</strong>을 뽑아 합계 <strong>10</strong>을 완성! 총 4장이 되어 동점 시에도 유리합니다.
+        </div>
+      </div>
+
+      <div class="hand-cards">
+        <div class="mini-wrap">
+          <div class="playing-card sm">
+            <div class="corner"><span class="corner-num">5</span><span class="corner-suit">◆</span></div>
+            <div class="card-center"><div class="center-ring"><span class="center-num">5</span></div></div>
+            <div class="corner bottom"><span class="corner-num">5</span><span class="corner-suit">◆</span></div>
+          </div>
+          <span class="state-tag open">초기 공개</span>
+        </div>
+
+        <div class="mini-wrap">
+          <div class="playing-card sm">
+            <div class="corner"><span class="corner-num">4</span><span class="corner-suit">◆</span></div>
+            <div class="card-center"><div class="center-ring"><span class="center-num">4</span></div></div>
+            <div class="corner bottom"><span class="corner-num">4</span><span class="corner-suit">◆</span></div>
+          </div>
+          <span class="state-tag secret">비공개 (본인)</span>
+        </div>
+
+        <div class="mini-wrap">
+          <div class="playing-card sm">
+            <div class="corner"><span class="corner-num">2</span><span class="corner-suit">◆</span></div>
+            <div class="card-center"><div class="center-ring"><span class="center-num">2</span></div></div>
+            <div class="corner bottom"><span class="corner-num">2</span><span class="corner-suit">◆</span></div>
+          </div>
+          <span class="state-tag secret">비공개 (본인)</span>
+        </div>
+
+        <div class="mini-wrap">
+          <div class="playing-card sm minus">
+            <div class="corner"><span class="corner-num">-1</span><span class="corner-suit">▼</span></div>
+            <div class="card-center"><div class="center-ring"><span class="center-num">-1</span></div></div>
+            <div class="corner bottom"><span class="corner-num">-1</span><span class="corner-suit">▼</span></div>
+          </div>
+          <span class="state-tag hit">HIT (전체 공개)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>THE DEVIL'S PLAN : DEAD AGAIN — CARD SET PREVIEW</span>
+      <span>5 + 4 + 2 + (-1) = 10 (4 CARDS)</span>
+    </div>
+  </div>
+</body>
+</html>
