@@ -1321,3 +1321,34 @@ html, body {
   line-height: 1.45;
   word-break: keep-all;
 }
+
+/* Save/Resume & Host End Controls */
+.btn-resume {
+  background: rgba(94, 230, 149, 0.14);
+  border: 1px solid rgba(94, 230, 149, 0.55);
+  color: var(--green);
+}
+.icon-btn.danger {
+  background: rgba(235, 87, 87, 0.2);
+  border-color: rgba(235, 87, 87, 0.55);
+  color: #ff9a9a;
+}
+.icon-btn.muted-sfx {
+  opacity: 0.45;
+}
+.toast-msg {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 28, 0.96);
+  border: 1px solid var(--gold);
+  color: var(--gold-bright);
+  padding: 9px 16px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 800;
+  z-index: 90;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  animation: cardPop 0.25s ease;
+}

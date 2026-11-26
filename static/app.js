@@ -149,6 +149,7 @@ function leaveRoom() {
   roomId = "";
   playerId = "";
   state = null;
+  if (typeof refreshResumeCard === "function") refreshResumeCard();
   showScreen("home");
 }
 
@@ -220,6 +221,11 @@ function render() {
 
   const me = state.players.find((p) => p.id === state.viewer_id);
   const opponents = state.players.filter((p) => p.id !== state.viewer_id);
+  const isHost = state.viewer_id === state.host_id;
+  if ($("btn-host-end")) {
+    $("btn-host-end").classList.toggle("hidden", !isHost || state.phase === "GAME_OVER");
+  }
+  handleStateSounds(state, me);
 
   // Render Opponents
   const oppGrid = $("opponents-grid");
@@ -728,3 +734,206 @@ async function checkLiveStatus() {
   }
 }
 checkLiveStatus();
+
+// ---------------------------------------------------------------------------
+// Procedural Web Audio SFX Engine (No external audio files needed)
+// ---------------------------------------------------------------------------
+let sfxEnabled = localStorage.getItem("hs_sfx") !== "off";
+let audioCtx = null;
+
+function ensureAudio() {
+  if (!sfxEnabled) return null;
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) audioCtx = new Ctx();
+  }
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+window.addEventListener("pointerdown", () => ensureAudio(), { passive: true });
+
+function playTone(freq, duration, type = "sine", vol = 0.14, delay = 0, endFreq = null) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, now);
+  if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.linearRampToValueAtTime(vol, now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + duration + 0.02);
+}
+
+const SFX = {
+  myTurn: () => {
+    playTone(587.33, 0.14, "triangle", 0.14, 0);
+    playTone(880, 0.22, "triangle", 0.15, 0.1);
+  },
+  cardFlip: () => {
+    playTone(420, 0.08, "triangle", 0.12, 0, 720);
+  },
+  minusCard: () => {
+    playTone(300, 0.22, "sawtooth", 0.1, 0, 140);
+  },
+  chip: () => {
+    playTone(2300, 0.06, "sine", 0.1, 0);
+    playTone(3450, 0.05, "sine", 0.07, 0.015);
+  },
+  raise: () => {
+    SFX.chip();
+    playTone(2600, 0.07, "sine", 0.1, 0.09);
+    playTone(3900, 0.08, "sine", 0.08, 0.11);
+  },
+  fold: () => {
+    playTone(340, 0.18, "sine", 0.1, 0, 180);
+  },
+  stay: () => {
+    playTone(523.25, 0.12, "sine", 0.12, 0);
+    playTone(659.25, 0.12, "sine", 0.1, 0.07);
+  },
+  dice: () => {
+    for (let i = 0; i < 4; i++) {
+      playTone(260 + i * 90, 0.045, "square", 0.06, i * 0.06);
+    }
+  },
+  win: () => {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone(f, 0.24, "triangle", 0.14, i * 0.09));
+  },
+  bust: () => {
+    playTone(220, 0.22, "sawtooth", 0.11, 0, 110);
+    playTone(150, 0.28, "sawtooth", 0.11, 0.16, 85);
+  },
+  save: () => {
+    playTone(660, 0.1, "sine", 0.12, 0);
+    playTone(990, 0.16, "sine", 0.12, 0.08);
+  },
+};
+
+function updateSfxBtn() {
+  const b = $("btn-sfx");
+  if (!b) return;
+  b.textContent = sfxEnabled ? "🔊" : "🔇";
+  b.classList.toggle("muted-sfx", !sfxEnabled);
+}
+updateSfxBtn();
+
+if ($("btn-sfx")) {
+  $("btn-sfx").onclick = () => {
+    sfxEnabled = !sfxEnabled;
+    localStorage.setItem("hs_sfx", sfxEnabled ? "on" : "off");
+    updateSfxBtn();
+    if (sfxEnabled) SFX.myTurn();
+  };
+}
+
+let prevSoundKey = { round: 0, phase: "", myTurn: false, logLen: 0, lastLog: "" };
+function handleStateSounds(st, me) {
+  if (!st) return;
+  const lastLog = st.logs && st.logs.length ? st.logs[st.logs.length - 1] : "";
+  if (st.round_num !== prevSoundKey.round && st.round_num > 0) {
+    SFX.dice();
+  } else if (st.phase !== prevSoundKey.phase) {
+    if (st.phase === "SHOWDOWN" || st.phase === "GAME_OVER") {
+      const winners = (st.winner_info && st.winner_info.winners) || [];
+      if (me && winners.includes(me.name)) SFX.win();
+      else if (me && me.busted) SFX.bust();
+      else SFX.chip();
+    }
+  } else if (lastLog && lastLog !== prevSoundKey.lastLog) {
+    if (lastLog.includes("레이즈")) SFX.raise();
+    else if (lastLog.includes("콜") || lastLog.includes("체크")) SFX.chip();
+    else if (lastLog.includes("포기")) SFX.fold();
+    else if (lastLog.includes("HIT!")) {
+      if (lastLog.includes("[ -1 ]")) SFX.minusCard();
+      else SFX.cardFlip();
+    } else if (lastLog.includes("STAY")) SFX.stay();
+  }
+
+  const isMyTurnNow = Boolean(me && me.is_turn);
+  if (isMyTurnNow && !prevSoundKey.myTurn) {
+    SFX.myTurn();
+  }
+
+  prevSoundKey = {
+    round: st.round_num,
+    phase: st.phase,
+    myTurn: isMyTurnNow,
+    logLen: st.logs ? st.logs.length : 0,
+    lastLog,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Toast + Save / Resume + Host End Game
+// ---------------------------------------------------------------------------
+function showToast(msg) {
+  const old = document.querySelector(".toast-msg");
+  if (old) old.remove();
+  const div = document.createElement("div");
+  div.className = "toast-msg";
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 2600);
+}
+
+function refreshResumeCard() {
+  const btn = $("btn-resume-saved");
+  if (!btn) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem("hs_saved_game") || "null");
+    if (saved && saved.room_id && saved.player_id) {
+      $("resume-meta").textContent = `방 코드 ${saved.room_id} · R${saved.round_num || 1} (${saved.name || "플레이어"})`;
+      btn.classList.remove("hidden");
+      btn.onclick = () => {
+        roomId = saved.room_id;
+        playerId = saved.player_id;
+        sessionStorage.setItem("hs_room", roomId);
+        sessionStorage.setItem("hs_pid", playerId);
+        startPolling();
+      };
+      return;
+    }
+  } catch (_) {}
+  btn.classList.add("hidden");
+}
+refreshResumeCard();
+
+if ($("btn-save-game")) {
+  $("btn-save-game").onclick = async () => {
+    if (!state || !roomId || !playerId) return;
+    await sendAction({ type: "save_game" });
+    const me = state.players.find((p) => p.id === playerId);
+    localStorage.setItem(
+      "hs_saved_game",
+      JSON.stringify({
+        room_id: roomId,
+        player_id: playerId,
+        round_num: state.round_num,
+        name: me ? me.name : "",
+        saved_at: Date.now(),
+      })
+    );
+    refreshResumeCard();
+    SFX.save();
+    showToast("💾 현재 게임이 저장되었습니다! (7일간 이어하기 가능)");
+  };
+}
+
+if ($("btn-host-end")) {
+  $("btn-host-end").onclick = async () => {
+    if (!state || state.viewer_id !== state.host_id) return;
+    if (!confirm("방장 권한으로 현재 게임을 즉시 종료하시겠습니까?\n현재 칩 1위가 우승자로 정산됩니다.")) return;
+    await sendAction({ type: "end_game" });
+    SFX.win();
+    showToast("🏁 방장 권한으로 게임을 종료했습니다.");
+  };
+}

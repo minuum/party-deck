@@ -83,11 +83,11 @@ class RoomStore:
             return None
         return GameRoom.from_dict(json.loads(raw))
 
-    def save_room(self, room: "GameRoom"):
+    def save_room(self, room: "GameRoom", ttl: int = 86400):
         key = f"hs:room:{room.room_id}"
         raw = json.dumps(room.to_dict(), ensure_ascii=False)
         if self.use_redis:
-            self._redis_cmd("SET", key, raw, "EX", 86400)
+            self._redis_cmd("SET", key, raw, "EX", ttl)
         else:
             self.local[key] = raw
 
@@ -683,6 +683,26 @@ class GameRoom:
                     "message": f"👑 최종 우승: {champ.name} ({champ.chips}칩)!",
                 }
 
+    def force_end_game(self):
+        alive = self.active_players()
+        if alive:
+            top_chips = max(p.chips for p in alive)
+            champs = [p.name for p in alive if p.chips == top_chips]
+            self.winner_info = {
+                "type": "champion",
+                "winners": champs,
+                "message": f"🏁 방장이 게임을 종료했습니다! 최종 1위: {', '.join(champs)} ({top_chips}칩)",
+            }
+        else:
+            self.winner_info = {
+                "type": "champion",
+                "winners": [],
+                "message": "🏁 방장이 게임을 종료했습니다.",
+            }
+        self.phase = "GAME_OVER"
+        self.next_ai_at = 0.0
+        self.add_log("🏁 방장 권한으로 게임이 종료되었습니다.")
+
     def is_ai_pending(self) -> bool:
         if self.phase == "REVEAL_SELECT":
             return any(p.is_ai and not p.revealed_initial for p in self.in_hand_players())
@@ -890,6 +910,12 @@ async def post_action(room_id: str, payload: dict):
             room.start_next_round()
         elif mtype == "restart" and player_id == room.host_id and room.phase == "GAME_OVER":
             room.start_game()
+        elif mtype == "end_game" and player_id == room.host_id and room.phase not in ("LOBBY", "GAME_OVER"):
+            room.force_end_game()
+        elif mtype == "save_game":
+            room.add_log(f"💾 {room.get_player(player_id).name}님이 현재 게임을 저장했습니다. (7일 보관)")
+            STORE.save_room(room, ttl=604800)
+            return JSONResponse({"type": "state", "saved": True, "data": room.serialize_for(player_id)})
 
         STORE.save_room(room)
         return JSONResponse({"type": "state", "data": room.serialize_for(player_id)})

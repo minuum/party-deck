@@ -41,7 +41,14 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v1.5 <span>방금 전</span></div>
+          <div class="patch-ver">v1.6 <span>방금 전</span></div>
+          <ul>
+            <li><strong>방장 게임 종료(🏁)</strong> &amp; <strong>게임 저장/이어하기(💾)</strong> 추가 (7일 보관)</li>
+            <li>순서별 <strong>효과음(SFX)</strong> 추가 (내 차례·카드·칩 베팅·레이즈·승리·버스트 + 음소거 토글)</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v1.5</div>
           <ul>
             <li>전용 골드 카드 파비콘(Favicon) &amp; 카톡/메신저 링크 미리보기(OG) 추가</li>
             <li>중복 클릭 방지 &amp; 모바일 폴링 안정화 적용</li>
@@ -99,6 +106,11 @@
             <button type="button" class="seg-btn" data-chips="40">40칩 (+10 보너스)</button>
           </div>
         </div>
+
+        <button id="btn-resume-saved" class="btn btn-resume hidden">
+          <span>💾 저장된 게임 이어하기</span>
+          <small id="resume-meta">방 코드 ---- · R1</small>
+        </button>
 
         <button id="btn-solo" class="btn btn-gold btn-lg">
           <span>🤖 1인 플레이</span>
@@ -182,6 +194,9 @@
           </div>
         </div>
         <div class="hud-right">
+          <button id="btn-sfx" class="icon-btn" title="효과음 켜기/끄기">🔊</button>
+          <button id="btn-save-game" class="icon-btn" title="현재 게임 저장">💾</button>
+          <button id="btn-host-end" class="icon-btn danger hidden" title="방장 권한: 게임 즉시 종료">🏁</button>
           <button id="btn-counter" class="icon-btn" title="카드 카운터">🃏<span id="hud-deck">20</span></button>
           <button id="btn-rules" class="icon-btn" title="규칙">?</button>
           <button id="btn-exit-game" class="icon-btn" title="나가기">✕</button>
