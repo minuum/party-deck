@@ -410,9 +410,8 @@ class GameRoom:
             return
 
         self.round_num += 1
-        if self.round_num % 2 == 1:
-            self.target = random.randint(5, 12)
-            self.add_log(f"🎲 8면체 주사위 결과: 한계 숫자 [ {self.target} ]")
+        self.target = random.randint(5, 12)
+        self.add_log(f"🎲 8면체 주사위 결과: 이번 라운드 한계 숫자 [ {self.target} ]")
 
         self.ante = min(1 + (self.round_num - 1) // 2, 5)
         self.deck = create_deck()
