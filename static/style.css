@@ -1989,19 +1989,19 @@ html, body {
   background: linear-gradient(155deg, #27ae60, #1b7e43);
   border-color: #5ee695;
   color: #fff;
-  animation: cardPop 0.3s ease;
 }
 .fl-cell.y {
   background: linear-gradient(155deg, #d4ac0d, #9a7d0a);
   border-color: #f7df8c;
   color: #111;
-  animation: cardPop 0.3s ease;
 }
 .fl-cell.r {
   background: linear-gradient(155deg, #922b21, #641e16);
   border-color: rgba(235, 87, 87, 0.65);
   color: #ffd1d1;
-  animation: cardPop 0.3s ease;
+}
+.fl-cell.pop-new {
+  animation: cardPop 0.28s ease;
 }
 
 .fl-keypad {

@@ -17,6 +17,8 @@ const FL_EQUATIONS = [
 let flState = null;
 let flPollTimer = null;
 let flPollBusy = false;
+let flLastServerSig = "";
+let flAnimateRowIdx = -1;
 
 function flStopPoll() {
   if (flPollTimer) {
@@ -66,6 +68,8 @@ function rebuildFlKeyColors(guesses) {
 
 function startFormulaLightGame(mode = "duel") {
   flStopPoll();
+  flLastServerSig = "";
+  flAnimateRowIdx = -1;
   const answer = FL_EQUATIONS[Math.floor(Math.random() * FL_EQUATIONS.length)];
   flState = {
     mode,
@@ -154,17 +158,19 @@ function renderFormulaLight() {
   board.innerHTML = "";
   const canPlayBoard = !isFriend || flState.mpPhase === "SETUP" || flState.mpPhase === "PLAYING" || flState.mpPhase === "DONE";
   if (canPlayBoard) {
-    flState.guesses.forEach((g) => {
+    flState.guesses.forEach((g, rIdx) => {
       const row = document.createElement("div");
       row.className = "fl-row";
+      const isNew = rIdx === flAnimateRowIdx;
       for (let i = 0; i < 9; i++) {
         const cell = document.createElement("div");
-        cell.className = `fl-cell ${g.colors[i]}`;
+        cell.className = `fl-cell ${g.colors[i]}` + (isNew ? " pop-new" : "");
         cell.textContent = g.text[i];
         row.appendChild(cell);
       }
       board.appendChild(row);
     });
+    flAnimateRowIdx = -1;
 
     if (!flState.done && !(showSetup && flState.secretSet)) {
       const row = document.createElement("div");
@@ -296,6 +302,7 @@ async function flSubmit() {
   // Local Solo / AI Duel Submit
   const colors = evaluateTrafficLight(guess, flState.answer);
   flState.guesses.push({ text: guess, colors });
+  flAnimateRowIdx = flState.guesses.length - 1;
   flState.keyColors = rebuildFlKeyColors(flState.guesses);
 
   const greens = colors.filter((c) => c === "g").length;
@@ -347,7 +354,21 @@ async function flSubmit() {
 // ---------------------------------------------------------------------------
 function flApplyServerData(d, fromSubmit = false) {
   if (!flState || flState.mode !== "friend") return;
+  const sig = JSON.stringify([
+    d.phase,
+    d.winner_id,
+    d.me ? d.me.secret_set : false,
+    d.me ? d.me.guesses.length : 0,
+    d.opp ? d.opp.name : "",
+    d.opp ? d.opp.secret_set : false,
+    d.opp ? d.opp.tries : 0,
+    d.opp ? d.opp.last_colors : [],
+  ]);
+  if (!fromSubmit && sig === flLastServerSig) return;
+  flLastServerSig = sig;
+
   const prevPhase = flState.mpPhase;
+  const prevGuessLen = flState.guesses.length;
   flState.roomId = d.room_id;
   flState.hostId = d.host_id;
   flState.mpPhase = d.phase;
@@ -356,6 +377,9 @@ function flApplyServerData(d, fromSubmit = false) {
     flState.secretSet = Boolean(d.me.secret_set);
     flState.mySecret = d.me.my_secret || "";
     flState.guesses = d.me.guesses || [];
+    if (flState.guesses.length > prevGuessLen) {
+      flAnimateRowIdx = flState.guesses.length - 1;
+    }
     flState.keyColors = rebuildFlKeyColors(flState.guesses);
     flState.revealedAnswer = d.me.target_answer || "";
   }
