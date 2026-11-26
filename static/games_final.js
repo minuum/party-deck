@@ -132,7 +132,10 @@ function startFormulaLightGame(mode = "duel") {
     mpPhase: "IDLE", // IDLE, WAITING, SETUP, PLAYING, DONE
     secretSet: false,
     mySecret: "",
+    myPending: false,
+    myPendingText: "",
     oppSecretSet: false,
+    oppPending: false,
     oppName: "",
     oppTries: 0,
     oppColors: Array(9).fill(""),
@@ -223,10 +226,11 @@ function renderFormulaLight() {
     if (!flState.done && !(showSetup && flState.secretSet)) {
       const row = document.createElement("div");
       row.className = "fl-row";
+      const showText = (isFriend && flState.myPending) ? flState.myPendingText : flState.input;
       for (let i = 0; i < 9; i++) {
         const cell = document.createElement("div");
-        cell.className = "fl-cell" + (i === flState.input.length ? " active-input" : "");
-        cell.textContent = flState.input[i] || "";
+        cell.className = "fl-cell" + (!flState.myPending && i === showText.length ? " active-input" : "");
+        cell.textContent = showText[i] || "";
         row.appendChild(cell);
       }
       board.appendChild(row);
@@ -238,6 +242,10 @@ function renderFormulaLight() {
   const kp = $("fl-keypad");
   kp.innerHTML = "";
   if (isFriend && (flState.mpPhase === "IDLE" || flState.mpPhase === "WAITING" || (showSetup && flState.secretSet))) {
+    return;
+  }
+  if (isFriend && flState.mpPhase === "PLAYING" && flState.myPending) {
+    kp.innerHTML = `<div class="wait-pill">⏳ 이번 라운드 답안 제출 완료! ${flState.oppName || "상대"}님의 제출을 기다리는 중...</div>`;
     return;
   }
 
@@ -308,6 +316,7 @@ function renderFormulaLight() {
 
 function flPressKey(k) {
   if (!flState || flState.done) return;
+  if (flState.mode === "friend" && flState.myPending) return;
   if (flState.mode === "friend" && flState.mpPhase !== "PLAYING" && !(flState.mpPhase === "SETUP" && !flState.secretSet)) return;
   if (k === "BACK") {
     flState.input = flState.input.slice(0, -1);
@@ -404,11 +413,14 @@ function flApplyServerData(d, fromSubmit = false) {
   if (!flState || flState.mode !== "friend") return;
   const sig = JSON.stringify([
     d.phase,
+    d.round_num,
     d.winner_id,
     d.me ? d.me.secret_set : false,
+    d.me ? d.me.pending_submitted : false,
     d.me ? d.me.guesses.length : 0,
     d.opp ? d.opp.name : "",
     d.opp ? d.opp.secret_set : false,
+    d.opp ? d.opp.pending_submitted : false,
     d.opp ? d.opp.tries : 0,
     d.opp ? d.opp.last_colors : [],
   ]);
@@ -424,6 +436,8 @@ function flApplyServerData(d, fromSubmit = false) {
   if (d.me) {
     flState.secretSet = Boolean(d.me.secret_set);
     flState.mySecret = d.me.my_secret || "";
+    flState.myPending = Boolean(d.me.pending_submitted);
+    flState.myPendingText = d.me.pending_text || "";
     flState.guesses = d.me.guesses || [];
     if (flState.guesses.length > prevGuessLen) {
       flAnimateRowIdx = flState.guesses.length - 1;
@@ -433,6 +447,7 @@ function flApplyServerData(d, fromSubmit = false) {
   }
   if (d.opp) {
     flState.oppSecretSet = Boolean(d.opp.secret_set);
+    flState.oppPending = Boolean(d.opp.pending_submitted);
     flState.oppName = d.opp.name;
     flState.oppTries = d.opp.tries;
     flState.oppColors = d.opp.last_colors || Array(9).fill("");
@@ -445,27 +460,42 @@ function flApplyServerData(d, fromSubmit = false) {
     if (typeof SFX !== "undefined") SFX.myTurn();
   } else if (prevPhase !== "PLAYING" && d.phase === "PLAYING") {
     flState.input = "";
-    $("fl-banner").textContent = `⚔️ 출제 완료! ${flState.oppName}님의 비밀 9칸 수식을 먼저 맞히세요!`;
-    $("fl-log").textContent = `내가 출제한 수식: ${flState.mySecret}`;
+    $("fl-banner").textContent = `⚔️ 출제 완료! 라운드 1 동시 제출 시작!`;
+    $("fl-log").textContent = `내가 출제한 수식: ${flState.mySecret} · 두 사람 모두 제출하면 동시 판정!`;
     if (typeof SFX !== "undefined") SFX.myTurn();
   } else if (d.phase === "DONE" && prevPhase !== "DONE") {
-    const iWon = d.winner_id === flState.playerId;
-    $("fl-banner").textContent = iWon
-      ? `🏆 결승전 우승! ${flState.oppName}님의 비밀 수식을 먼저 맞혔습니다!`
-      : `💀 ${d.winner_name}님이 내 수식을 먼저 맞혔습니다!`;
-    $("fl-log").textContent = `상대 비밀 수식: ${flState.revealedAnswer}`;
-    if (typeof SFX !== "undefined") {
-      if (iWon) SFX.win();
-      else SFX.bust();
+    if (d.winner_id === "DRAW") {
+      $("fl-banner").textContent = `🤝 동시 정답 적중! 무승부입니다!`;
+      $("fl-log").textContent = `상대 비밀 수식: ${flState.revealedAnswer} · 같은 라운드에 둘 다 맞혔습니다!`;
+      if (typeof SFX !== "undefined") SFX.stay();
+    } else {
+      const iWon = d.winner_id === flState.playerId;
+      $("fl-banner").textContent = iWon
+        ? `🏆 결승전 우승! ${flState.oppName}님의 비밀 수식을 먼저 맞혔습니다!`
+        : `💀 ${d.winner_name}님이 내 수식을 먼저 맞혔습니다!`;
+      $("fl-log").textContent = `상대 비밀 수식: ${flState.revealedAnswer}`;
+      if (typeof SFX !== "undefined") {
+        if (iWon) SFX.win();
+        else SFX.bust();
+      }
     }
-  } else if (fromSubmit && flState.guesses.length > 0) {
-    const last = flState.guesses[flState.guesses.length - 1];
-    const g = last.colors.filter((c) => c === "g").length;
-    const y = last.colors.filter((c) => c === "y").length;
-    $("fl-banner").textContent = `🟩 초록 ${g}개 · 🟨 노랑 ${y}개 · 🟥 빨강 ${9 - g - y}개`;
-    if (typeof SFX !== "undefined") {
-      if (g >= 5) SFX.stay();
-      else SFX.cardFlip();
+  } else if (d.phase === "PLAYING") {
+    if (flState.guesses.length > prevGuessLen) {
+      const last = flState.guesses[flState.guesses.length - 1];
+      const g = last.colors.filter((c) => c === "g").length;
+      const y = last.colors.filter((c) => c === "y").length;
+      $("fl-banner").textContent = `🔔 동시 공개 완료! 🟩 ${g}개 · 🟨 ${y}개 · 🟥 ${9 - g - y}개`;
+      $("fl-log").textContent = `라운드 ${d.round_num} 시작! 다음 9칸 수식을 제출하세요.`;
+      if (typeof SFX !== "undefined") {
+        if (g >= 5) SFX.stay();
+        else SFX.cardFlip();
+      }
+    } else if (flState.myPending && !flState.oppPending) {
+      $("fl-banner").textContent = `⏳ 제출 완료! ${flState.oppName}님의 답안 제출을 기다리는 중...`;
+      if (fromSubmit && typeof SFX !== "undefined") SFX.chip();
+    } else if (!flState.myPending && flState.oppPending) {
+      $("fl-banner").textContent = `⚡ ${flState.oppName}님이 먼저 제출했습니다! 내 답안을 제출하세요!`;
+      if (typeof SFX !== "undefined") SFX.myTurn();
     }
   }
   renderFormulaLight();

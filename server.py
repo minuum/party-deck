@@ -1018,6 +1018,7 @@ def fl_serialize(room: dict, viewer_id: str) -> dict:
         "room_id": room["room_id"],
         "host_id": room["host_id"],
         "phase": room["phase"],  # WAITING, SETUP, PLAYING, DONE
+        "round_num": room.get("round_num", 1),
         "winner_id": room.get("winner_id"),
         "winner_name": room.get("winner_name"),
         "viewer_id": viewer_id,
@@ -1026,6 +1027,8 @@ def fl_serialize(room: dict, viewer_id: str) -> dict:
             "name": me["name"],
             "secret_set": bool(me.get("secret")),
             "my_secret": me.get("secret") or "",
+            "pending_submitted": bool(me.get("pending_guess")),
+            "pending_text": me.get("pending_guess") or "",
             "guesses": me["guesses"],
             "target_answer": (opp.get("secret") if opp and done else None),
         } if me else None,
@@ -1033,6 +1036,7 @@ def fl_serialize(room: dict, viewer_id: str) -> dict:
             "id": opp["id"],
             "name": opp["name"],
             "secret_set": bool(opp.get("secret")),
+            "pending_submitted": bool(opp.get("pending_guess")),
             "tries": len(opp["guesses"]),
             "last_colors": opp["guesses"][-1]["colors"] if opp["guesses"] else [""] * 9,
             "best_greens": max((g["colors"].count("g") for g in opp["guesses"]), default=0),
@@ -1053,9 +1057,10 @@ async def fl_create(payload: dict):
             "room_id": room_id,
             "host_id": pid,
             "phase": "WAITING",
+            "round_num": 1,
             "winner_id": None,
             "winner_name": None,
-            "players": [{"id": pid, "name": name, "secret": "", "guesses": []}],
+            "players": [{"id": pid, "name": name, "secret": "", "pending_guess": "", "guesses": []}],
         }
         STORE.set_json(f"hs:fl:{room_id}", room)
         return JSONResponse({"room_id": room_id, "player_id": pid, "data": fl_serialize(room, pid)})
@@ -1078,7 +1083,7 @@ async def fl_join(payload: dict):
     if len(room["players"]) >= 2:
         return JSONResponse({"error": "이미 2명이 가득 찬 방입니다. (기존 닉네임으로 입력하면 재입장됩니다)"}, status_code=400)
     pid = f"fl_{random.randint(10000, 99999)}"
-    room["players"].append({"id": pid, "name": name, "secret": "", "guesses": []})
+    room["players"].append({"id": pid, "name": name, "secret": "", "pending_guess": "", "guesses": []})
     room["phase"] = "SETUP"
     STORE.set_json(key, room)
     return JSONResponse({"room_id": room_id, "player_id": pid, "data": fl_serialize(room, pid)})
@@ -1142,12 +1147,38 @@ async def fl_guess(room_id: str, payload: dict):
     opp = next((p for p in room["players"] if p["id"] != pid), None)
     if not me or not opp:
         return JSONResponse({"error": "권한이 없습니다."}, status_code=403)
-    colors = fl_eval_colors(guess, opp["secret"])
-    me["guesses"].append({"text": guess, "colors": colors})
-    if colors.count("g") == 9:
-        room["phase"] = "DONE"
-        room["winner_id"] = me["id"]
-        room["winner_name"] = me["name"]
+    if me.get("pending_guess"):
+        return JSONResponse({"error": "이미 이번 라운드 답안을 제출했습니다. 상대방 대기 중!"}, status_code=400)
+
+    me["pending_guess"] = guess
+
+    # Simultaneous evaluation once BOTH players have submitted for this round
+    if me.get("pending_guess") and opp.get("pending_guess"):
+        p0, p1 = room["players"][0], room["players"][1]
+        g0, g1 = p0["pending_guess"], p1["pending_guess"]
+        c0 = fl_eval_colors(g0, p1["secret"])
+        c1 = fl_eval_colors(g1, p0["secret"])
+        p0["guesses"].append({"text": g0, "colors": c0})
+        p1["guesses"].append({"text": g1, "colors": c1})
+        p0["pending_guess"] = ""
+        p1["pending_guess"] = ""
+        room["round_num"] = room.get("round_num", 1) + 1
+
+        w0 = c0.count("g") == 9
+        w1 = c1.count("g") == 9
+        if w0 and w1:
+            room["phase"] = "DONE"
+            room["winner_id"] = "DRAW"
+            room["winner_name"] = "무승부"
+        elif w0:
+            room["phase"] = "DONE"
+            room["winner_id"] = p0["id"]
+            room["winner_name"] = p0["name"]
+        elif w1:
+            room["phase"] = "DONE"
+            room["winner_id"] = p1["id"]
+            room["winner_name"] = p1["name"]
+
     STORE.set_json(key, room)
     return JSONResponse({"data": fl_serialize(room, pid)})
 
@@ -1162,11 +1193,13 @@ async def fl_restart(room_id: str, payload: dict):
     if pid != room["host_id"]:
         return JSONResponse({"error": "방장만 재경기를 시작할 수 있습니다."}, status_code=403)
     room["phase"] = "SETUP" if len(room["players"]) == 2 else "WAITING"
+    room["round_num"] = 1
     room["winner_id"] = None
     room["winner_name"] = None
     for p in room["players"]:
         p["guesses"] = []
         p["secret"] = ""
+        p["pending_guess"] = ""
     STORE.set_json(key, room)
     return JSONResponse({"data": fl_serialize(room, pid)})
 
