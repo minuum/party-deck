@@ -41,7 +41,14 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v1.8 <span>방금 전</span></div>
+          <div class="patch-ver">v1.9 <span>방금 전</span></div>
+          <ul>
+            <li><strong>Party Deck 게임 종합 허브</strong> 메인 페이지 추가 (23개 게임 목록 &amp; 구현도 표시)</li>
+            <li>카테고리 필터(메인·감옥·결승·유배지) 및 준비 중 게임 미리보기 모달 지원</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v1.8</div>
           <ul>
             <li><strong>AI 인원 자유 선택</strong> (1인 플레이: AI 1~4명 선택, 멀티 대기실: 방장이 AI 1명씩 추가/제거 가능)</li>
           </ul>
@@ -99,9 +106,40 @@
   </aside>
 
   <div id="app">
-    <!-- HOME / LOBBY SCREEN -->
-    <section id="screen-home" class="screen active">
-      <div class="brand-header">
+    <!-- PARTY DECK GAME HUB (MAIN LANDING) -->
+    <section id="screen-hub" class="screen active">
+      <div class="hub-header">
+        <div class="eyebrow">THE DEVIL'S PLAN : DEAD AGAIN</div>
+        <h1 class="hub-title">PARTY DECK</h1>
+        <p class="brand-sub">모바일 두뇌 서바이벌 게임 종합 채널</p>
+        <div class="hub-progress-wrap">
+          <div class="hub-progress-meta">
+            <span>전체 게임 구현 현황</span>
+            <strong id="hub-progress-text">1 / 23 구현 완료</strong>
+          </div>
+          <div class="hub-progress-bar"><div id="hub-progress-fill" class="hub-progress-fill" style="width:4.3%"></div></div>
+        </div>
+      </div>
+
+      <div class="hub-tabs" id="hub-tabs">
+        <button type="button" class="hub-tab active" data-cat="all">전체</button>
+        <button type="button" class="hub-tab" data-cat="playable">플레이 가능</button>
+        <button type="button" class="hub-tab" data-cat="main">메인매치</button>
+        <button type="button" class="hub-tab" data-cat="prison">감옥매치</button>
+        <button type="button" class="hub-tab" data-cat="final">결승전</button>
+        <button type="button" class="hub-tab" data-cat="exile">유배지</button>
+      </div>
+
+      <div id="hub-games-grid" class="hub-games-grid"></div>
+    </section>
+
+    <!-- HIT, STAY HOME / LOBBY SCREEN -->
+    <section id="screen-home" class="screen">
+      <div class="sub-nav-bar">
+        <button id="btn-back-hub" class="back-hub-btn" type="button">◀ 전체 게임 목록</button>
+        <span class="sub-nav-tag">6일차 메인매치</span>
+      </div>
+      <div class="brand-header" style="padding-top:8px;">
         <div class="eyebrow">THE DEVIL'S PLAN : DEAD AGAIN</div>
         <h1 class="brand-title">HIT, STAY</h1>
         <p class="brand-sub">5인 생존 베팅 카드 게임 · 모바일 웹 버전</p>
@@ -254,6 +292,26 @@
         <div id="action-bar" class="action-bar"></div>
       </div>
     </section>
+
+    <!-- COMING SOON GAME PREVIEW MODAL -->
+    <div id="modal-coming-soon" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-sheet">
+        <div class="modal-head">
+          <h3 id="cs-title">게임 이름</h3>
+          <button class="close-modal">✕</button>
+        </div>
+        <div class="cs-body">
+          <div class="cs-badges">
+            <span id="cs-cat" class="round-pill">메인매치</span>
+            <span id="cs-day" class="phase-pill">1일차</span>
+            <span id="cs-status" class="st-badge warn">구현 예정 (0%)</span>
+          </div>
+          <p id="cs-desc" class="slide-desc"></p>
+          <div class="cs-note">💡 원하시는 게임을 채팅으로 말씀해 주시면 우선순위로 바로 구현해 추가해 드립니다!</div>
+        </div>
+      </div>
+    </div>
 
     <!-- CARD COUNTER MODAL -->
     <div id="modal-counter" class="modal hidden">

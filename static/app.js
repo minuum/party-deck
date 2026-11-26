@@ -36,6 +36,7 @@ function showError(msg) {
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get("room")) {
   $("input-room").value = urlParams.get("room").toUpperCase();
+  showScreen("home");
 }
 
 // Chip selector
@@ -511,6 +512,7 @@ document.querySelectorAll(".close-modal, .modal-backdrop").forEach((el) => {
   el.addEventListener("click", () => {
     $("modal-counter").classList.add("hidden");
     $("modal-rules").classList.add("hidden");
+    if ($("modal-coming-soon")) $("modal-coming-soon").classList.add("hidden");
   });
 });
 
@@ -958,3 +960,95 @@ if ($("btn-host-end")) {
     showToast("🏁 방장 권한으로 게임을 종료했습니다.");
   };
 }
+
+// ---------------------------------------------------------------------------
+// Party Deck Main Game Hub Catalog
+// ---------------------------------------------------------------------------
+const GAME_CATALOG = [
+  { id: "hit_stay", name: "HIT, STAY", cat: "main", catLabel: "메인매치", day: "6일차", progress: 100, playable: true, desc: "35장 숫자 카드와 8면체 주사위 한계 숫자로 승부하는 5인 생존 베팅 게임 (AI 1~4명 & 실시간 멀티플레이)" },
+  { id: "choice", name: "양자택일", cat: "main", catLabel: "메인매치", day: "1일차", progress: 0, playable: false, desc: "1일차 메인매치 · 다수결/소수결 심리전 선택 게임" },
+  { id: "mystery_exchange", name: "미스터리 거래소", cat: "main", catLabel: "메인매치", day: "2일차", progress: 0, playable: false, desc: "2일차 메인매치 · 숨겨진 시세와 정보를 활용한 거래 게임" },
+  { id: "gem_market", name: "보석 암시장", cat: "main", catLabel: "메인매치", day: "3일차", progress: 0, playable: false, desc: "3일차 메인매치 · 보석 경매 및 비밀 거래 심리전" },
+  { id: "auction_bingo", name: "경매 빙고", cat: "main", catLabel: "메인매치", day: "4일차", progress: 0, playable: false, desc: "4일차 메인매치 · 경매로 숫자를 낙찰받아 빙고를 완성하는 전략전" },
+  { id: "hidden_word", name: "히든 워드", cat: "main", catLabel: "메인매치", day: "5일차", progress: 0, playable: false, desc: "5일차 메인매치 · 숨겨진 단어를 추리하는 언어 추론 게임" },
+
+  { id: "heavy_13", name: "무거운 13", cat: "prison", catLabel: "감옥매치", day: "1일차", progress: 0, playable: false, desc: "1일차 감옥매치 · 무게와 숫자를 조절하는 데스매치" },
+  { id: "russian_roulette", name: "러시안 룰렛", cat: "prison", catLabel: "감옥매치", day: "2일차", progress: 0, playable: false, desc: "2일차 감옥매치 · 확률과 배짱의 러시안 룰렛" },
+  { id: "piggy_bank", name: "돼지 저금통", cat: "prison", catLabel: "감옥매치", day: "3일차", progress: 0, playable: false, desc: "3일차 감옥매치 · 칩 분배와 눈치 싸움" },
+  { id: "wall_go_2", name: "벽바둑 2", cat: "prison", catLabel: "감옥매치", day: "4일차", progress: 0, playable: false, desc: "4일차 감옥매치 · 벽을 세워 영토를 차지하는 보드 전략전" },
+  { id: "formula_tower", name: "수식의 탑", cat: "prison", catLabel: "감옥매치", day: "5일차", progress: 0, playable: false, desc: "5일차 감옥매치 · 연산 카드 조합으로 탑을 쌓는 수리 대결" },
+  { id: "gradation", name: "그라데이션", cat: "prison", catLabel: "감옥매치", day: "6일차", progress: 0, playable: false, desc: "6일차 감옥매치 · 순서와 색/수치 배열 추리전" },
+
+  { id: "card_janggi", name: "카드 장기", cat: "final", catLabel: "결승전", day: "1회전", progress: 0, playable: false, desc: "결승 1회전 · 카드 기반 1:1 장기 변형 전략전" },
+  { id: "color_link", name: "컬러 링크", cat: "final", catLabel: "결승전", day: "2회전", progress: 0, playable: false, desc: "결승 2회전 · 색상을 연결하는 퍼즐 보드 대결" },
+  { id: "formula_light", name: "수식 신호등", cat: "final", catLabel: "결승전", day: "3회전", progress: 0, playable: false, desc: "결승 3회전 · 조건 신호에 맞춰 수식을 완성하는 최종전" },
+
+  { id: "piece_puzzle", name: "피스 퍼즐", cat: "exile", catLabel: "유배지", day: "매치 01", progress: 0, playable: false, desc: "유배지 매치 01 · 도형 조각 맞추기 퍼즐" },
+  { id: "spot_diff", name: "달라진 그림 찾기", cat: "exile", catLabel: "유배지", day: "매치 02", progress: 0, playable: false, desc: "유배지 매치 02 · 기억력과 관찰력 대결" },
+  { id: "secret_code", name: "비밀 코드", cat: "exile", catLabel: "유배지", day: "매치 03", progress: 0, playable: false, desc: "유배지 매치 03 · 코드 추리 및 해독 게임" },
+  { id: "fence_build", name: "울타리 치기", cat: "exile", catLabel: "유배지", day: "매치 04", progress: 0, playable: false, desc: "유배지 매치 04 · 선을 이어 영역을 가두는 보드 게임" },
+  { id: "symmetry_puzzle", name: "대칭 퍼즐", cat: "exile", catLabel: "유배지", day: "매치 05", progress: 0, playable: false, desc: "유배지 매치 05 · 대칭 구조를 완성하는 공간 지각 퍼즐" },
+  { id: "world_flags", name: "만국기", cat: "exile", catLabel: "유배지", day: "매치 06", progress: 0, playable: false, desc: "유배지 매치 06 · 깃발 패턴 기억 및 배열 대결" },
+  { id: "count_squares", name: "네모 세기", cat: "exile", catLabel: "유배지", day: "매치 07", progress: 0, playable: false, desc: "유배지 매치 07 · 빠른 도형 카운팅 순발력 대결" },
+  { id: "point_omok", name: "포인트 오목", cat: "exile", catLabel: "유배지", day: "최후대결", progress: 0, playable: false, desc: "유배지 최후의 대결 · 포인트 배팅 결합 오목" },
+];
+
+let currentHubCat = "all";
+
+function renderHub() {
+  const grid = $("hub-games-grid");
+  if (!grid) return;
+  const playableCnt = GAME_CATALOG.filter((g) => g.playable).length;
+  $("hub-progress-text").textContent = `${playableCnt} / ${GAME_CATALOG.length} 구현 완료`;
+  $("hub-progress-fill").style.width = `${Math.max(5, Math.round((playableCnt / GAME_CATALOG.length) * 100))}%`;
+
+  const filtered = GAME_CATALOG.filter((g) => {
+    if (currentHubCat === "all") return true;
+    if (currentHubCat === "playable") return g.playable;
+    return g.cat === currentHubCat;
+  });
+
+  grid.innerHTML = "";
+  filtered.forEach((g) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "game-tile" + (g.playable ? " playable" : "");
+    btn.innerHTML = `
+      <div class="tile-top">
+        <span class="tile-tag">${g.catLabel} · ${g.day}</span>
+        <span class="st-badge ${g.playable ? "ok" : "warn"}">${g.playable ? "플레이 ▶" : `${g.progress}%`}</span>
+      </div>
+      <div class="tile-title">${g.name}</div>
+      <div class="tile-desc">${g.desc}</div>
+      <div class="tile-bar"><div class="tile-bar-fill" style="width:${g.progress}%"></div></div>
+    `;
+    btn.onclick = () => {
+      if (g.playable && g.id === "hit_stay") {
+        showScreen("home");
+      } else {
+        $("cs-title").textContent = g.name;
+        $("cs-cat").textContent = g.catLabel;
+        $("cs-day").textContent = g.day;
+        $("cs-status").textContent = `구현 예정 (${g.progress}%)`;
+        $("cs-desc").textContent = g.desc;
+        $("modal-coming-soon").classList.remove("hidden");
+      }
+    };
+    grid.appendChild(btn);
+  });
+}
+
+document.querySelectorAll("#hub-tabs .hub-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll("#hub-tabs .hub-tab").forEach((t) => t.classList.remove("active"));
+    tab.classList.add("active");
+    currentHubCat = tab.dataset.cat;
+    renderHub();
+  });
+});
+
+if ($("btn-back-hub")) {
+  $("btn-back-hub").onclick = () => showScreen("hub");
+}
+
+renderHub();
