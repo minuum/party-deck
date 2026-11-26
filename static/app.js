@@ -425,3 +425,193 @@ document.querySelectorAll(".close-modal, .modal-backdrop").forEach((el) => {
 if (roomId && playerId) {
   startPolling();
 }
+
+// ---------------------------------------------------------------------------
+// Interactive Swipeable Rule & Simulation Guide
+// ---------------------------------------------------------------------------
+let guideIdx = 0;
+const TOTAL_SLIDES = 6;
+let autoSimTimer = null;
+
+function setGuideSlide(idx) {
+  guideIdx = Math.max(0, Math.min(TOTAL_SLIDES - 1, idx));
+  $("guide-track").style.transform = `translateX(-${guideIdx * 100}%)`;
+  const dots = $("guide-dots");
+  dots.innerHTML = "";
+  for (let i = 0; i < TOTAL_SLIDES; i++) {
+    const d = document.createElement("span");
+    d.className = "g-dot" + (i === guideIdx ? " active" : "");
+    d.onclick = () => setGuideSlide(i);
+    dots.appendChild(d);
+  }
+  $("btn-guide-prev").style.opacity = guideIdx === 0 ? "0.35" : "1";
+  $("btn-guide-next").textContent = guideIdx === TOTAL_SLIDES - 1 ? "게임하기 ▶" : "다음 ▶";
+}
+
+$("btn-guide-prev").onclick = () => setGuideSlide(guideIdx - 1);
+$("btn-guide-next").onclick = () => {
+  if (guideIdx === TOTAL_SLIDES - 1) {
+    $("modal-rules").classList.add("hidden");
+  } else {
+    setGuideSlide(guideIdx + 1);
+  }
+};
+
+// Touch swipe support
+let touchStartX = 0;
+const viewport = $("guide-viewport");
+viewport.addEventListener("touchstart", (e) => {
+  touchStartX = e.touches[0].clientX;
+}, { passive: true });
+viewport.addEventListener("touchend", (e) => {
+  const diff = e.changedTouches[0].clientX - touchStartX;
+  if (diff < -42) setGuideSlide(guideIdx + 1);
+  else if (diff > 42) setGuideSlide(guideIdx - 1);
+});
+
+// Slide 2: Dice & Flip
+$("btn-sim-dice").onclick = () => {
+  const el = $("sim-dice-val");
+  el.classList.add("rolling");
+  setTimeout(() => {
+    el.textContent = Math.floor(Math.random() * 8) + 5;
+    el.classList.remove("rolling");
+  }, 350);
+};
+document.querySelectorAll("#sim-flip-row .flip-card").forEach((card) => {
+  card.addEventListener("click", () => {
+    document.querySelectorAll("#sim-flip-row .flip-card").forEach((c) => c.classList.remove("flipped"));
+    card.classList.add("flipped");
+  });
+});
+
+// Slide 4: Interactive HIT/STAY
+let simCards = [5, 4, 2];
+function renderSimHS() {
+  const row = $("sim-hs-cards");
+  row.innerHTML = "";
+  let sum = 0;
+  simCards.forEach((v) => {
+    sum += v;
+    const d = document.createElement("div");
+    d.className = "sim-card" + (v < 0 ? " minus" : "");
+    d.textContent = v;
+    row.appendChild(d);
+  });
+  const sumEl = $("sim-hs-sum");
+  sumEl.classList.remove("bust", "safe");
+  if (sum > 10) {
+    sumEl.classList.add("bust");
+    sumEl.textContent = `합계: ${sum} (버스트)`;
+  } else {
+    sumEl.classList.add("safe");
+    sumEl.textContent = `합계: ${sum} (${simCards.length}장 생존!)`;
+  }
+}
+$("btn-sim-hit").onclick = () => {
+  if (simCards.length === 3) {
+    simCards.push(-1);
+  } else if (simCards.length < 6) {
+    simCards.push([1, 2, -1][Math.floor(Math.random() * 3)]);
+  }
+  renderSimHS();
+};
+$("btn-sim-stay").onclick = () => {
+  const sum = simCards.reduce((a, b) => a + b, 0);
+  $("sim-hs-sum").textContent = sum <= 10 ? `STAY 확정! (${sum}점, ${simCards.length}장)` : `버스트로 패배! (-1을 노려보세요)`;
+};
+$("btn-sim-hs-reset").onclick = () => {
+  simCards = [5, 4, 2];
+  renderSimHS();
+};
+
+// Slide 6: Auto Round Simulation
+const AUTO_STEPS = [
+  {
+    phase: "공개 선택",
+    pot: 4,
+    log: "🎲 한계 숫자 [10] 결정! 각자 3장 중 1장을 공개합니다.",
+    players: [
+      { name: "나", info: "공개: 5", cls: "" },
+      { name: "VIPER", info: "공개: 6", cls: "" },
+      { name: "NOVA", info: "공개: 4", cls: "" },
+      { name: "ORION", info: "공개: 7", cls: "" },
+    ],
+  },
+  {
+    phase: "1차 베팅",
+    pot: 10,
+    log: "💰 VIPER 레이즈! 전원 콜하여 팟이 10칩으로 불어났습니다.",
+    players: [
+      { name: "나", info: "콜 (+2)", cls: "" },
+      { name: "VIPER", info: "레이즈 (+2)", cls: "" },
+      { name: "NOVA", info: "콜 (+2)", cls: "" },
+      { name: "ORION", info: "포기", cls: "bust" },
+    ],
+  },
+  {
+    phase: "HIT / STAY",
+    pot: 10,
+    log: "➕ 나: HIT으로 [-1] 획득! (5+4+2-1 = 10점 완성)",
+    players: [
+      { name: "나", info: "HIT [-1]", cls: "win" },
+      { name: "VIPER", info: "STAY", cls: "" },
+      { name: "NOVA", info: "HIT [+5] 💥", cls: "bust" },
+      { name: "ORION", info: "포기", cls: "bust" },
+    ],
+  },
+  {
+    phase: "결과 정산",
+    pot: 14,
+    log: "🏆 나와 VIPER 모두 10점 동률 → 4장 보유한 나의 승리! (+14칩)",
+    players: [
+      { name: "나 🏆", info: "10점 (4장)", cls: "win" },
+      { name: "VIPER", info: "10점 (3장)", cls: "" },
+      { name: "NOVA", info: "버스트 (12)", cls: "bust" },
+      { name: "ORION", info: "포기", cls: "bust" },
+    ],
+  },
+];
+
+function renderAutoStep(step) {
+  $("auto-phase-badge").textContent = step.phase;
+  $("auto-pot").textContent = step.pot;
+  $("auto-log").textContent = step.log;
+  const box = $("auto-players");
+  box.innerHTML = "";
+  step.players.forEach((p) => {
+    const div = document.createElement("div");
+    div.className = "auto-p " + p.cls;
+    div.innerHTML = `<strong>${p.name}</strong><span>${p.info}</span>`;
+    box.appendChild(div);
+  });
+}
+
+$("btn-auto-sim").onclick = () => {
+  if (autoSimTimer) clearInterval(autoSimTimer);
+  let i = 0;
+  renderAutoStep(AUTO_STEPS[0]);
+  autoSimTimer = setInterval(() => {
+    i++;
+    if (i >= AUTO_STEPS.length) {
+      clearInterval(autoSimTimer);
+      autoSimTimer = null;
+      return;
+    }
+    renderAutoStep(AUTO_STEPS[i]);
+  }, 1600);
+};
+
+// Initialize guide when opening
+const origOpenHome = $("btn-open-rules-home").onclick;
+$("btn-open-rules-home").onclick = () => {
+  setGuideSlide(0);
+  renderAutoStep(AUTO_STEPS[0]);
+  origOpenHome();
+};
+const origOpenGame = $("btn-rules").onclick;
+$("btn-rules").onclick = () => {
+  setGuideSlide(0);
+  renderAutoStep(AUTO_STEPS[0]);
+  origOpenGame();
+};

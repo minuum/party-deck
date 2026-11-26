@@ -673,3 +673,372 @@ html, body {
   line-height: 1.55;
   color: #ddd;
 }
+
+/* Interactive Swipeable Rule & Simulation Guide */
+.guide-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  background: radial-gradient(circle at 50% 0%, #1d1712 0%, #111118 65%, #0b0b10 100%);
+  border-top: 2px solid var(--gold);
+  border-radius: 22px 22px 0 0;
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 90dvh;
+}
+.guide-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.guide-badge {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--gold-bright);
+  background: rgba(212, 175, 55, 0.14);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+.guide-viewport {
+  overflow: hidden;
+  width: 100%;
+  touch-action: pan-y;
+}
+.guide-track {
+  display: flex;
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.guide-slide {
+  min-width: 100%;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.slide-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 1.2px;
+}
+.slide-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+}
+.slide-desc {
+  font-size: 13.5px;
+  color: #ccc8bd;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+.slide-desc strong { color: var(--gold-bright); }
+.slide-desc .red-txt { color: var(--red); }
+
+.sim-stage {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Slide 1 Deck */
+.sim-deck-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.sim-mini {
+  background: linear-gradient(155deg, #22222d 0%, #121218 100%);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 10px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: cardPop 0.45s ease backwards;
+}
+.sim-mini.rare { border-color: rgba(245, 206, 91, 0.85); }
+.sim-mini.minus { background: linear-gradient(155deg, #38141c 0%, #1b0a0e 100%); border-color: rgba(235, 87, 87, 0.75); }
+.sim-mini .n { font-size: 22px; font-weight: 900; color: var(--gold-bright); }
+.sim-mini.minus .n { color: var(--red); }
+.sim-mini .c { font-size: 11px; color: #bbb; font-weight: 700; }
+.sim-tip { text-align: center; font-size: 12px; color: var(--gold-bright); opacity: 0.85; margin-top: 2px; }
+
+@keyframes cardPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Slide 2 Dice & Flip */
+.sim-dice-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sim-dice {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f3d273 0%, #b88820 100%);
+  color: #111;
+  font-size: 24px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(212, 175, 55, 0.3);
+  transition: transform 0.35s ease;
+}
+.sim-dice.rolling { transform: rotate(360deg) scale(1.12); }
+.sim-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: var(--gold-bright);
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sim-flip-row {
+  display: flex;
+  gap: 10px;
+  perspective: 700px;
+}
+.flip-card {
+  width: 74px;
+  height: 102px;
+  cursor: pointer;
+}
+.flip-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+.flip-front, .flip-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 900;
+  gap: 4px;
+}
+.flip-front {
+  background: #1b1b26;
+  border: 1.5px solid rgba(212, 175, 55, 0.45);
+  color: var(--gold-bright);
+}
+.flip-back {
+  background: linear-gradient(155deg, #2a2415 0%, #16130b 100%);
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  transform: rotateY(180deg);
+}
+.flip-front.minus, .flip-back.minus { color: var(--red); border-color: var(--red); }
+.flip-front small, .flip-back small { font-size: 9.5px; font-weight: 700; opacity: 0.85; }
+
+/* Slide 3 Betting */
+.bet-anim-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 6px;
+}
+.bet-actor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.chip-fly {
+  color: var(--gold-bright);
+  font-size: 12px;
+  animation: floatChip 1.8s ease-in-out infinite;
+}
+.chip-fly.delay { animation-delay: 0.9s; }
+@keyframes floatChip {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-5px); opacity: 1; }
+}
+.bet-pot-circle {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  background: rgba(212, 175, 55, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold-bright);
+}
+.bet-pot-circle strong { font-size: 24px; color: var(--green); }
+.bet-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.btag { font-size: 11.5px; font-weight: 800; padding: 4px 9px; border-radius: 99px; }
+.btag.call { background: rgba(103, 184, 245, 0.18); color: var(--blue); }
+.btag.raise { background: rgba(212, 175, 55, 0.18); color: var(--gold-bright); }
+.btag.fold { background: rgba(235, 87, 87, 0.18); color: var(--red); }
+
+/* Slide 4 Interactive HIT/STAY */
+.sim-status-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.sim-sum {
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.sim-sum.bust { background: rgba(235, 87, 87, 0.2); color: var(--red); }
+.sim-sum.safe { background: rgba(94, 230, 149, 0.2); color: var(--green); }
+.sim-hand-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 76px;
+  align-items: center;
+}
+.sim-card {
+  width: 54px;
+  height: 76px;
+  border-radius: 9px;
+  background: #1b1b25;
+  border: 1.5px solid rgba(212, 175, 55, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--gold-bright);
+  animation: cardPop 0.35s ease;
+}
+.sim-card.minus { background: #36131a; border-color: var(--red); color: var(--red); }
+.sim-btn-row { display: flex; gap: 8px; width: 100%; }
+.sim-act {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 13.5px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.sim-act.hit { background: linear-gradient(135deg, #37d67a, #1d9c53); color: #07190e; }
+.sim-act.stay { background: linear-gradient(135deg, #f3d273, #c89b2b); color: #141005; }
+.sim-act.reset { flex: 0 0 42px; background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+/* Slide 5 Tie-Break */
+.tie-compare {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+.tie-side {
+  flex: 1;
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.tie-side.win { background: rgba(94, 230, 149, 0.1); border: 1px solid rgba(94, 230, 149, 0.45); }
+.tie-side.lose { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); opacity: 0.78; }
+.tie-badge { font-size: 11px; font-weight: 900; }
+.tie-side.win .tie-badge { color: var(--green); }
+.tie-cards { display: flex; justify-content: center; gap: 4px; }
+.tie-cards span {
+  width: 24px; height: 32px; border-radius: 5px; background: #1e1e29; border: 1px solid rgba(212, 175, 55, 0.45);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: var(--gold-bright);
+}
+.tie-cards span.m { background: #36131a; border-color: var(--red); color: var(--red); }
+.tie-meta { font-size: 12px; color: #ddd; }
+.tie-vs { font-size: 12px; font-weight: 900; color: var(--muted); }
+
+/* Slide 6 Auto Sim */
+.auto-sim-head { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+.auto-players {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.auto-p {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  padding: 7px 8px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.25s ease;
+}
+.auto-p.win { border-color: var(--green); background: rgba(94, 230, 149, 0.12); }
+.auto-p.bust { border-color: var(--red); opacity: 0.6; }
+.auto-log {
+  font-size: 12px;
+  color: var(--gold-bright);
+  text-align: center;
+  min-height: 18px;
+  font-weight: 700;
+}
+
+/* Guide Navigation */
+.guide-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 6px;
+}
+.nav-arrow {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.nav-arrow.primary {
+  background: linear-gradient(135deg, #f3d273 0%, #c89b2b 100%);
+  color: #111;
+  border: none;
+}
+.guide-dots { display: flex; gap: 6px; }
+.g-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  transition: width 0.2s ease, background 0.2s ease;
+}
+.g-dot.active { width: 18px; border-radius: 99px; background: var(--gold); }

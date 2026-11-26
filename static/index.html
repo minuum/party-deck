@@ -49,7 +49,7 @@
         <div id="home-error" class="error-msg hidden"></div>
       </div>
 
-      <button id="btn-open-rules-home" class="link-btn">📜 게임 규칙 보기</button>
+      <button id="btn-open-rules-home" class="link-btn">📜 게임 규칙 &amp; 시뮬레이션 체험</button>
     </section>
 
     <!-- WAITING ROOM (MULTIPLAYER LOBBY) -->
@@ -148,19 +148,139 @@
       </div>
     </div>
 
-    <!-- RULES MODAL -->
+    <!-- INTERACTIVE SWIPEABLE RULES & SIMULATION MODAL -->
     <div id="modal-rules" class="modal hidden">
       <div class="modal-backdrop"></div>
-      <div class="modal-sheet">
-        <div class="modal-head">
-          <h3>📜 HIT, STAY 핵심 룰</h3>
-          <button class="close-modal">✕</button>
+      <div class="guide-sheet">
+        <div class="guide-top">
+          <div class="guide-badge">HIT, STAY · INTERACTIVE GUIDE</div>
+          <button class="close-modal" id="btn-close-guide">✕</button>
         </div>
-        <div class="rules-body">
-          <p><strong>1. 카드 구성 (35장):</strong> 7(1), 6(2), 5(3), 4(4), 3(5), 2(6), 1(7), <strong>-1(7)</strong></p>
-          <p><strong>2. 한계 숫자:</strong> 2라운드마다 8면체 주사위(5~12)로 결정됩니다.</p>
-          <p><strong>3. 진행 순서:</strong> 기본 베팅 → 카드 3장 수령 후 <strong>1장 공개</strong> → <strong>1차 베팅</strong> → <strong>HIT / STAY</strong> → <strong>2차 베팅</strong> → 공개 및 정산</p>
-          <p><strong>4. 승패:</strong> 한계 숫자 이하 중 가장 가까운 합이 승리! 동점 시 <strong>카드가 더 많은 쪽</strong>이 승리합니다. 한계를 넘기면 <strong>버스트(최하위)</strong> 처리됩니다.</p>
+
+        <div class="guide-viewport" id="guide-viewport">
+          <div class="guide-track" id="guide-track">
+            <!-- Slide 1: Deck & Goal -->
+            <div class="guide-slide">
+              <div class="slide-eyebrow">STEP 1 / 6 · 목표 &amp; 카드 구성</div>
+              <h3 class="slide-title">35장 숫자 카드로 한계에 도전</h3>
+              <p class="slide-desc">카드 합이 <strong>한계 숫자 이하</strong>이면서 가장 가까운 사람이 팟(Pot)을 독식합니다. 높은 숫자일수록 장수가 적고, <strong>-1 카드 7장</strong>이 심리전의 핵심입니다.</p>
+              <div class="sim-deck-grid">
+                <div class="sim-mini rare"><span class="n">7</span><span class="c">1장</span></div>
+                <div class="sim-mini rare"><span class="n">6</span><span class="c">2장</span></div>
+                <div class="sim-mini"><span class="n">5</span><span class="c">3장</span></div>
+                <div class="sim-mini"><span class="n">4</span><span class="c">4장</span></div>
+                <div class="sim-mini"><span class="n">3</span><span class="c">5장</span></div>
+                <div class="sim-mini"><span class="n">2</span><span class="c">6장</span></div>
+                <div class="sim-mini"><span class="n">1</span><span class="c">7장</span></div>
+                <div class="sim-mini minus"><span class="n">-1</span><span class="c">7장</span></div>
+              </div>
+              <div class="sim-tip">👈 옆으로 슥 넘겨서 직접 체험해보세요</div>
+            </div>
+
+            <!-- Slide 2: Dice & Reveal -->
+            <div class="guide-slide">
+              <div class="slide-eyebrow">STEP 2 / 6 · 한계 숫자 &amp; 1장 공개</div>
+              <h3 class="slide-title">주사위를 굴리고 1장을 공개하세요</h3>
+              <p class="slide-desc">2라운드마다 8면체 주사위(5~12)로 한계 숫자가 정해집니다. 각자 3장을 받고 <strong>1장을 골라 전체 공개</strong>합니다.</p>
+              <div class="sim-stage">
+                <div class="sim-dice-row">
+                  <div class="sim-dice" id="sim-dice-val">10</div>
+                  <button type="button" class="sim-btn" id="btn-sim-dice">🎲 주사위 굴리기</button>
+                </div>
+                <div class="sim-flip-row" id="sim-flip-row">
+                  <div class="flip-card" data-val="5"><div class="flip-inner"><div class="flip-front">5<small>터치해 공개</small></div><div class="flip-back">5<small>공개됨!</small></div></div></div>
+                  <div class="flip-card" data-val="4"><div class="flip-inner"><div class="flip-front">4<small>터치해 공개</small></div><div class="flip-back">4<small>공개됨!</small></div></div></div>
+                  <div class="flip-card" data-val="-1"><div class="flip-inner"><div class="flip-front minus">-1<small>터치해 공개</small></div><div class="flip-back minus">-1<small>공개됨!</small></div></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 3: Betting -->
+            <div class="guide-slide">
+              <div class="slide-eyebrow">STEP 3 / 6 · 1차 &amp; 2차 베팅</div>
+              <h3 class="slide-title">심리전으로 칩을 불리세요</h3>
+              <p class="slide-desc">HIT/STAY 전후로 두 번 베팅합니다. <strong>최소 칩 보유자의 잔액</strong>을 넘어서는 베팅은 제한되어 약자도 끝까지 버틸 수 있습니다.</p>
+              <div class="sim-stage">
+                <div class="bet-anim-box">
+                  <div class="bet-actor">나 <span class="chip-fly">🪙 +3</span></div>
+                  <div class="bet-pot-circle">POT <strong id="sim-pot-val">8</strong></div>
+                  <div class="bet-actor">VIPER <span class="chip-fly delay">🪙 +3</span></div>
+                </div>
+                <div class="bet-tags">
+                  <span class="btag call">콜 / 체크</span>
+                  <span class="btag raise">레이즈 (+1~+5)</span>
+                  <span class="btag fold">포기 (Fold)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 4: Interactive HIT / STAY -->
+            <div class="guide-slide">
+              <div class="slide-eyebrow">STEP 4 / 6 · HIT / STAY 체험</div>
+              <h3 class="slide-title">버스트 위기! HIT 할까요?</h3>
+              <p class="slide-desc">현재 한계 숫자는 <strong>10</strong>, 내 손패 합은 <strong class="red-txt">11 (버스트)</strong>! 아래 <strong>HIT</strong>을 눌러 <code>-1</code> 카드로 기적의 생존을 체험해보세요.</p>
+              <div class="sim-stage">
+                <div class="sim-status-bar">
+                  <span>한계: <strong>10</strong></span>
+                  <span id="sim-hs-sum" class="sim-sum bust">합계: 11 (버스트)</span>
+                </div>
+                <div class="sim-hand-row" id="sim-hs-cards">
+                  <div class="sim-card">5</div>
+                  <div class="sim-card">4</div>
+                  <div class="sim-card">2</div>
+                </div>
+                <div class="sim-btn-row">
+                  <button type="button" class="sim-act hit" id="btn-sim-hit">HIT (+1장)</button>
+                  <button type="button" class="sim-act stay" id="btn-sim-stay">STAY</button>
+                  <button type="button" class="sim-act reset" id="btn-sim-hs-reset">↺</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 5: Tie-break & Bust -->
+            <div class="guide-slide">
+              <div class="slide-eyebrow">STEP 5 / 6 · 승패 &amp; 동점 규칙</div>
+              <h3 class="slide-title">동점이면 카드 수가 많은 쪽이 승!</h3>
+              <p class="slide-desc">한계 10에서 둘 다 합계 10이어도 <strong>카드가 4장인 쪽</strong>이 3장인 쪽을 이깁니다. 전원 버스트 시 팟은 다음 라운드로 이월됩니다.</p>
+              <div class="sim-stage">
+                <div class="tie-compare">
+                  <div class="tie-side win">
+                    <div class="tie-badge">WIN 🏆</div>
+                    <div class="tie-cards"><span>5</span><span>4</span><span>2</span><span class="m">-1</span></div>
+                    <div class="tie-meta">합계 10 · <strong>4장</strong></div>
+                  </div>
+                  <div class="tie-vs">VS</div>
+                  <div class="tie-side lose">
+                    <div class="tie-badge">LOSE</div>
+                    <div class="tie-cards"><span>6</span><span>3</span><span>1</span></div>
+                    <div class="tie-meta">합계 10 · 3장</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 6: Full Round Auto Simulation -->
+            <div class="guide-slide">
+              <div class="slide-eyebrow">STEP 6 / 6 · 실전 1라운드 시뮬레이션</div>
+              <h3 class="slide-title">실제 라운드 흐름 한눈에 보기</h3>
+              <p class="slide-desc">재생 버튼을 누르면 4명의 플레이어가 <strong>카드 공개 → 베팅 → HIT/STAY → 정산</strong>까지 자동으로 시연합니다.</p>
+              <div class="sim-stage">
+                <div class="auto-sim-head">
+                  <span id="auto-phase-badge" class="round-pill">대기 중</span>
+                  <span class="pot-label" style="color:#5ee695;font-weight:800;">POT <span id="auto-pot">4</span> · 한계 10</span>
+                </div>
+                <div class="auto-players" id="auto-players"></div>
+                <div class="auto-log" id="auto-log">▶ 아래 재생 버튼을 눌러 시뮬레이션을 시작하세요</div>
+                <button type="button" class="btn btn-gold" id="btn-auto-sim" style="padding:10px;width:100%;">▶ 1라운드 자동 시뮬레이션 재생</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-nav">
+          <button type="button" class="nav-arrow" id="btn-guide-prev">◀ 이전</button>
+          <div class="guide-dots" id="guide-dots"></div>
+          <button type="button" class="nav-arrow primary" id="btn-guide-next">다음 ▶</button>
         </div>
       </div>
     </div>
