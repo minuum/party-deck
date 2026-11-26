@@ -23,6 +23,11 @@ const $ = (id) => document.getElementById(id);
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
   $(`screen-${name}`).classList.add("active");
+  const rcp = $("right-counter-panel");
+  if (rcp) {
+    rcp.classList.toggle("hidden", name !== "game");
+    if (name !== "game") rcp.classList.remove("open");
+  }
 }
 
 function showError(msg) {
@@ -353,6 +358,7 @@ function render() {
     });
 
     renderActionBar(me);
+    renderSmartCounter(me);
   }
 }
 
@@ -502,9 +508,92 @@ $("btn-copy-link").onclick = () => {
 };
 
 $("btn-counter").onclick = () => {
-  renderCounter();
-  $("modal-counter").classList.remove("hidden");
+  const me = state && state.players.find((p) => p.id === state.viewer_id);
+  renderSmartCounter(me);
+  const rcp = $("right-counter-panel");
+  if (rcp) {
+    rcp.classList.remove("hidden");
+    rcp.classList.toggle("open");
+  }
 };
+if ($("btn-right-counter-close")) {
+  $("btn-right-counter-close").onclick = () => $("right-counter-panel").classList.remove("open");
+}
+
+function renderSmartCounter(me) {
+  if (!state) return;
+  const keys = ["7", "6", "5", "4", "3", "2", "1", "-1"];
+  let unseenTotal = 0;
+  const remMap = {};
+  keys.forEach((k) => {
+    const rem = Math.max(0, TOTAL_DECK_COUNTS[k] - (state.visible_counts[k] || 0));
+    remMap[k] = rem;
+    unseenTotal += rem;
+  });
+
+  if ($("rc-unseen-total")) $("rc-unseen-total").textContent = unseenTotal;
+
+  // Render smart bars
+  const grid = $("rc-grid");
+  if (grid) {
+    grid.innerHTML = "";
+    keys.forEach((k) => {
+      const total = TOTAL_DECK_COUNTS[k];
+      const rem = remMap[k];
+      const pct = unseenTotal > 0 ? Math.round((rem / unseenTotal) * 100) : 0;
+      const barPct = Math.round((rem / total) * 100);
+      const isMinus = k === "-1";
+      const row = document.createElement("div");
+      row.className = "rc-row";
+      row.innerHTML = `
+        <span class="rc-num ${isMinus ? "minus" : ""}">${k}</span>
+        <div class="rc-bar"><div class="rc-bar-fill ${isMinus ? "minus" : ""}" style="width:${barPct}%"></div></div>
+        <span class="rc-cnt">${rem}/${total}</span>
+        <span class="rc-pct">${pct}%</span>
+      `;
+      grid.appendChild(row);
+    });
+  }
+
+  // Compute HIT probabilities for `me`
+  if (!me || me.hand_sum === null || unseenTotal === 0) return;
+  const sum = me.hand_sum;
+  const target = state.target;
+  let safeCnt = 0;
+  let exactCnt = 0;
+  keys.forEach((k) => {
+    const val = parseInt(k, 10);
+    if (sum + val <= target) safeCnt += remMap[k];
+    if (sum + val === target) exactCnt += remMap[k];
+  });
+  const safePct = Math.round((safeCnt / unseenTotal) * 100);
+  const bustPct = 100 - safePct;
+  const exactPct = Math.round((exactCnt / unseenTotal) * 100);
+  const minusPct = Math.round((remMap["-1"] / unseenTotal) * 100);
+
+  if ($("rc-safe-pct")) $("rc-safe-pct").textContent = `${safePct}%`;
+  if ($("rc-bust-pct")) $("rc-bust-pct").textContent = `${bustPct}%`;
+  if ($("rc-exact-pct")) $("rc-exact-pct").textContent = `${exactPct}%`;
+  if ($("rc-minus-pct")) $("rc-minus-pct").textContent = `${minusPct}%`;
+
+  const adv = $("rc-advice");
+  if (adv) {
+    if (sum > target) {
+      adv.textContent =
+        sum - target === 1
+          ? `🔥 현재 버스트(${sum})! -1로 구조될 확률 ${minusPct}% — 도박 HIT 노려볼 만해요!`
+          : `💀 현재 버스트(${sum})! 한계(${target})보다 ${sum - target} 초과 — 포기(Fold) 권장`;
+    } else if (sum === target) {
+      adv.textContent = `🏆 한계 숫자(${target}) 완벽 적중! STAY로 잠그고 레이즈를 고려하세요!`;
+    } else if (safePct >= 65) {
+      adv.textContent = `✅ HIT 유리! 생존 확률 ${safePct}% (한계 적중 ${exactPct}%)`;
+    } else if (safePct >= 40) {
+      adv.textContent = `⚖️ 반반 승부 (생존 ${safePct}% vs 버스트 ${bustPct}%) — 상대 패를 보고 결정하세요`;
+    } else {
+      adv.textContent = `✋ 버스트 위험 ${bustPct}%! 안전하게 STAY 권장`;
+    }
+  }
+}
 $("btn-rules").onclick = () => $("modal-rules").classList.remove("hidden");
 $("btn-open-rules-home").onclick = () => $("modal-rules").classList.remove("hidden");
 
@@ -967,13 +1056,13 @@ if ($("btn-host-end")) {
 const GAME_CATALOG = [
   { id: "hit_stay", name: "HIT, STAY", cat: "main", catLabel: "메인매치", day: "6일차", progress: 100, playable: true, desc: "35장 숫자 카드와 8면체 주사위 한계 숫자로 승부하는 5인 생존 베팅 게임 (AI 1~4명 & 실시간 멀티플레이)" },
   { id: "choice", name: "양자택일", cat: "main", catLabel: "메인매치", day: "1일차", progress: 100, playable: true, desc: "1일차 메인매치 · 6라운드 공공의 이익 vs 개인의 이익 과반수 심리전 (7인전)" },
-  { id: "mystery_exchange", name: "미스터리 거래소", cat: "main", catLabel: "메인매치", day: "2일차", progress: 0, playable: false, desc: "2일차 메인매치 · 숨겨진 시세와 정보를 활용한 거래 게임" },
+  { id: "mystery_exchange", name: "미스터리 거래소", cat: "main", catLabel: "메인매치", day: "2일차", progress: 100, playable: true, desc: "2일차 메인매치 · 7개 종목의 숨겨진 가격 패턴을 파악해 자산을 불리는 10라운드 주식 거래" },
   { id: "gem_market", name: "보석 암시장", cat: "main", catLabel: "메인매치", day: "3일차", progress: 0, playable: false, desc: "3일차 메인매치 · 보석 경매 및 비밀 거래 심리전" },
   { id: "auction_bingo", name: "경매 빙고", cat: "main", catLabel: "메인매치", day: "4일차", progress: 0, playable: false, desc: "4일차 메인매치 · 경매로 숫자를 낙찰받아 빙고를 완성하는 전략전" },
   { id: "hidden_word", name: "히든 워드", cat: "main", catLabel: "메인매치", day: "5일차", progress: 0, playable: false, desc: "5일차 메인매치 · 숨겨진 단어를 추리하는 언어 추론 게임" },
 
   { id: "heavy_13", name: "무거운 13", cat: "prison", catLabel: "감옥매치", day: "1일차", progress: 100, playable: true, desc: "1일차 감옥매치 · 바위 카드(0~6)와 3색+레인보우 칩으로 임계점 13을 피하는 14라운드 전략전" },
-  { id: "russian_roulette", name: "러시안 룰렛", cat: "prison", catLabel: "감옥매치", day: "2일차", progress: 0, playable: false, desc: "2일차 감옥매치 · 확률과 배짱의 러시안 룰렛" },
+  { id: "russian_roulette", name: "러시안 룰렛", cat: "prison", catLabel: "감옥매치", day: "2일차", progress: 100, playable: true, desc: "2일차 감옥매치 · 16약실·2실탄! 크레딧으로 조사·총구 회전·약실 조작 후 격발 생존전" },
   { id: "piggy_bank", name: "돼지 저금통", cat: "prison", catLabel: "감옥매치", day: "3일차", progress: 0, playable: false, desc: "3일차 감옥매치 · 칩 분배와 눈치 싸움" },
   { id: "wall_go_2", name: "벽바둑 2", cat: "prison", catLabel: "감옥매치", day: "4일차", progress: 0, playable: false, desc: "4일차 감옥매치 · 벽을 세워 영토를 차지하는 보드 전략전" },
   { id: "formula_tower", name: "수식의 탑", cat: "prison", catLabel: "감옥매치", day: "5일차", progress: 0, playable: false, desc: "5일차 감옥매치 · 연산 카드 조합으로 탑을 쌓는 수리 대결" },
@@ -1029,6 +1118,10 @@ function renderHub() {
         startChoiceGame();
       } else if (g.playable && g.id === "heavy_13") {
         startHeavy13Game();
+      } else if (g.playable && g.id === "mystery_exchange") {
+        startExchangeGame();
+      } else if (g.playable && g.id === "russian_roulette") {
+        startRouletteGame();
       } else {
         $("cs-title").textContent = g.name;
         $("cs-cat").textContent = g.catLabel;

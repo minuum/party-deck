@@ -41,7 +41,15 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v2.0 <span>방금 전</span></div>
+          <div class="patch-ver">v2.1 <span>방금 전</span></div>
+          <ul>
+            <li><strong>오른쪽 스마트 카드 카운터</strong> 상시 패널 추가 (실시간 HIT 생존/버스트/적중 확률 &amp; AI 추천)</li>
+            <li><strong>2일차 메인매치 〈미스터리 거래소〉</strong> &amp; <strong>감옥매치 〈러시안 룰렛〉</strong> 구현 완료</li>
+            <li>Party Deck 구현 현황 <strong>5 / 23</strong> 달성!</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v2.0</div>
           <ul>
             <li><strong>1일차 메인매치 〈양자택일〉</strong> 구현 완료 (6라운드 협력/배신 심리전)</li>
             <li><strong>1일차 감옥매치 〈무거운 13〉</strong> 구현 완료 (14라운드 바위·칩·임계점 13 전략전)</li>
@@ -113,6 +121,46 @@
     </div>
   </aside>
 
+  <!-- RIGHT SMART CARD COUNTER SIDEBAR (HIT, STAY) -->
+  <aside id="right-counter-panel" class="right-counter-panel hidden">
+    <div class="patch-head">
+      <div>
+        <div class="patch-eyebrow">SMART COUNTER · LIVE</div>
+        <div class="patch-title">🃏 실시간 카드 카운터</div>
+      </div>
+      <button id="btn-right-counter-close" class="patch-close" type="button">✕</button>
+    </div>
+
+    <div class="smart-prob-box">
+      <div class="smart-prob-row">
+        <div class="prob-card safe">
+          <span class="prob-lbl">HIT 생존 확률</span>
+          <strong id="rc-safe-pct">-</strong>
+        </div>
+        <div class="prob-card bust">
+          <span class="prob-lbl">HIT 버스트</span>
+          <strong id="rc-bust-pct">-</strong>
+        </div>
+      </div>
+      <div class="smart-prob-row">
+        <div class="prob-card exact">
+          <span class="prob-lbl">🎯 한계 적중</span>
+          <strong id="rc-exact-pct">-</strong>
+        </div>
+        <div class="prob-card minus">
+          <span class="prob-lbl">🔴 -1 등장률</span>
+          <strong id="rc-minus-pct">-</strong>
+        </div>
+      </div>
+      <div id="rc-advice" class="rc-advice">게임이 시작되면 확률을 계산합니다.</div>
+    </div>
+
+    <div class="patch-section">
+      <div class="patch-sec-title">미공개 카드 분포 (<span id="rc-unseen-total">35</span>장 남음)</div>
+      <div id="rc-grid" class="rc-list"></div>
+    </div>
+  </aside>
+
   <div id="app">
     <!-- PARTY DECK GAME HUB (MAIN LANDING) -->
     <section id="screen-hub" class="screen active">
@@ -139,6 +187,64 @@
       </div>
 
       <div id="hub-games-grid" class="hub-games-grid"></div>
+    </section>
+
+    <!-- DAY 2 MAIN MATCH: 미스터리 거래소 -->
+    <section id="screen-exchange" class="screen">
+      <div class="sub-nav-bar">
+        <button class="back-hub-btn" type="button" onclick="showScreen('hub')">◀ 전체 게임 목록</button>
+        <span class="sub-nav-tag">2일차 메인매치 · 미스터리 거래소</span>
+      </div>
+      <div class="d1-hud">
+        <span class="round-pill" id="ex-round">R1 / 10</span>
+        <span class="chip-pill" style="font-size:11.5px;">현금 <strong id="ex-cash">100,000</strong></span>
+        <span class="pot-val" id="ex-total" style="font-size:13px;">총자산 100,000</span>
+      </div>
+      <div class="table-banner" style="margin-bottom:6px;">
+        <div id="ex-banner" class="banner-text">7개 종목의 숨겨진 가격 패턴을 찾아 수익을 극대화하세요!</div>
+        <div id="ex-log" class="mini-log">매수/매도 후 [다음 라운드]를 눌러 시세 변동을 확인하세요.</div>
+      </div>
+      <div id="ex-stocks" class="ex-stocks-list"></div>
+      <div class="ex-footer">
+        <div id="ex-rank" class="ex-rank-strip"></div>
+        <button type="button" id="btn-ex-next" class="btn btn-gold" style="padding:11px;width:100%;">📈 장 마감 · 다음 라운드</button>
+      </div>
+    </section>
+
+    <!-- DAY 2 PRISON MATCH: 러시안 룰렛 -->
+    <section id="screen-roulette" class="screen">
+      <div class="sub-nav-bar">
+        <button class="back-hub-btn" type="button" onclick="showScreen('hub')">◀ 전체 게임 목록</button>
+        <span class="sub-nav-tag">2일차 감옥매치 · 러시안 룰렛</span>
+      </div>
+      <div class="d1-hud">
+        <span class="round-pill" id="rr-aim">🎯 조준: 나</span>
+        <span class="phase-pill" id="rr-swap-gauge">조작 게이지 0/6</span>
+        <span class="chip-pill" style="font-size:12px;">크레딧 <strong id="rr-credits" style="color:#f7df8c;">10</strong></span>
+      </div>
+
+      <div id="rr-players" class="rr-players-row"></div>
+
+      <div class="rr-chamber-title">16개 약실 (실탄 2발 · 인접 2칸을 조사/조작)</div>
+      <div id="rr-chambers" class="rr-chambers-grid"></div>
+
+      <div class="table-banner" style="margin:6px 0;">
+        <div id="rr-banner" class="banner-text">약실을 선택하고 크레딧 행동을 고르세요</div>
+        <div id="rr-log" class="mini-log">1번 약실부터 현재 조준된 사람 순으로 시계방향 격발됩니다.</div>
+      </div>
+
+      <div id="rr-actions" class="action-bar" style="margin-top:auto;">
+        <div class="action-row cols-2">
+          <button type="button" class="act-btn act-call" id="btn-rr-pub">👁️ 공개 조사 (1C)</button>
+          <button type="button" class="act-btn act-stay" id="btn-rr-priv">🕵️ 비공개 조사 (2C)</button>
+        </div>
+        <div class="action-row cols-3">
+          <button type="button" class="act-btn act-raise" id="btn-rr-rot1">🔄 +1칸 (3C)</button>
+          <button type="button" class="act-btn act-raise" id="btn-rr-rot2">🔄 +2칸 (4C)</button>
+          <button type="button" class="act-btn act-fold" id="btn-rr-swap">🔀 조작 (+2C)</button>
+        </div>
+        <button type="button" class="btn btn-gold" id="btn-rr-fire" style="padding:10px;">🔫 크레딧 종료 · 격발 시작!</button>
+      </div>
     </section>
 
     <!-- DAY 1 MAIN MATCH: 양자택일 -->
@@ -541,5 +647,6 @@
 
   <script src="/static/app.js"></script>
   <script src="/static/games_day1.js"></script>
+  <script src="/static/games_day2.js"></script>
 </body>
 </html>
