@@ -72,13 +72,16 @@ def _gemini_korean_relation_score(secret: str, word: str, api_key: str) -> Optio
     )
     for model in ("gemini-2.5-flash", "gemini-2.0-flash"):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        gen_cfg = {
+            "temperature": 0.0,
+            "maxOutputTokens": 128,
+            "responseMimeType": "application/json",
+        }
+        if model.startswith("gemini-2.5"):
+            gen_cfg["thinkingConfig"] = {"thinkingBudget": 0}
         body = json.dumps({
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.0,
-                "maxOutputTokens": 40,
-                "responseMimeType": "application/json",
-            },
+            "generationConfig": gen_cfg,
         }).encode("utf-8")
         req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
         try:
@@ -161,6 +164,16 @@ GM_CARDS = [
     {"id": "bronze", "label": "🥉 동", "pts": 2, "isBomb": False},
     {"id": "bomb4", "label": "💣 폭탄", "pts": -4, "isBomb": True},
     {"id": "bomb6", "label": "💥 대폭탄", "pts": -6, "isBomb": True},
+]
+
+EX_RULE_POOL = [
+    {"rule_id": "even_up", "desc": "짝수 라운드 +35% 급등 / 홀수 라운드 -15% 조정"},
+    {"rule_id": "mod3_drop", "desc": "평소 +20% 상승 / 3의 배수 라운드 -28% 급락"},
+    {"rule_id": "inverse", "desc": "상승 종목 2개 이하일 때 반대로 +38% 급등 (인버스)"},
+    {"rule_id": "streak2_boom", "desc": "2연속 하락 후 반드시 +68% 대폭등 반등"},
+    {"rule_id": "follow_bull", "desc": "직전 라운드 상승 종목 4개 이상이면 +28% 동반 급등"},
+    {"rule_id": "box_range", "desc": "10,500원↓ +42% 반등 / 17,000원↑ -25% 차익실현"},
+    {"rule_id": "late_volatile", "desc": "R1~7 꾸준히 +18% 상승 / R8~10 고변동성(±40%)"},
 ]
 
 EX_INIT_STOCKS = [
@@ -251,16 +264,30 @@ def start_mp_game(room: dict):
         room["log"] = "합이 13 이상 폭발 시 놓여있던 카드 장수만큼 벌점!"
 
     elif gt == "mystery_exchange":
+        rule_mode = room.get("rule_mode", "classic")  # classic or shuffle
+        rules = [dict(r) for r in EX_RULE_POOL]
+        if rule_mode == "shuffle":
+            random.shuffle(rules)
+        stocks = []
+        for s, rl in zip(EX_INIT_STOCKS, rules):
+            sd = dict(s)
+            sd["history"] = [10000]
+            sd["rule_id"] = rl["rule_id"]
+            sd["rule_desc"] = rl["desc"]
+            sd["rule_revealed"] = False
+            stocks.append(sd)
         for p in ps:
             p["cash"] = 100000
             p["holdings"] = {s["id"]: 0 for s in EX_INIT_STOCKS}
             p["ready"] = False
         room["state"] = {
             "max_rounds": 10,
-            "stocks": [dict(s) for s in EX_INIT_STOCKS],
+            "rule_mode": rule_mode,
+            "stocks": stocks,
         }
-        room["banner"] = "📈 라운드 1 장 개장! 매수/매도 후 [거래 완료]를 누르세요."
-        room["log"] = "모든 플레이어가 거래 완료를 누르면 다음 라운드 시세가 변동됩니다."
+        mode_lbl = "🎲 랜덤 룰 섞기" if rule_mode == "shuffle" else "🏛️ 데블스 원작 룰"
+        room["banner"] = f"📈 라운드 1 개장 ({mode_lbl})! 매 라운드 종료 시 종목 1개의 비밀 룰이 공개됩니다."
+        room["log"] = "초반엔 주가 차트로 추리하고, 매 라운드 공개되는 비밀 룰을 공략하세요!"
 
     elif gt == "russian_roulette":
         chambers = [{"idx": i, "bullet": False, "pub": False, "priv_by": [], "fired": False} for i in range(16)]
@@ -394,6 +421,10 @@ def handle_mp_action(room: dict, pid: str, payload: dict) -> Optional[str]:
             add_ai_to_room(room)
         elif act == "remove_ai":
             remove_ai_from_room(room, payload.get("target_id"))
+        elif act == "set_rule_mode":
+            rm = payload.get("rule_mode", "classic")
+            if rm in ("classic", "shuffle"):
+                room["rule_mode"] = rm
         elif act == "start":
             if len(ps) < GAME_META[gt]["min_players"]:
                 return "최소 2명 이상 필요합니다."
@@ -576,43 +607,61 @@ def _act_exchange(room: dict, me: dict, payload: dict):
             r = room["round"]
             prev_ups = sum(1 for s in stocks if s["price"] > s["prev"])
             up_cnt = 0
+            inv_stocks = []
             for s in stocks:
                 s["prev"] = s["price"]
-                if s["id"] == "bangeo":
+                rid = s.get("rule_id", "even_up")
+                if rid == "inverse":
+                    inv_stocks.append(s)
                     continue
-                if s["id"] == "matso":
+                if rid == "even_up":
                     m = 1.35 if r % 2 == 0 else 0.85
-                elif s["id"] == "mujo":
+                elif rid == "mod3_drop":
                     m = 0.72 if r % 3 == 0 else 1.2
-                elif s["id"] == "alt":
+                elif rid == "streak2_boom":
                     if s["streakDown"] >= 2:
                         m = 1.68
                         s["streakDown"] = 0
                     else:
                         m = 0.84
                         s["streakDown"] += 1
-                elif s["id"] == "yeolim":
+                elif rid == "follow_bull":
                     m = 1.28 if prev_ups >= 4 else 0.9
-                elif s["id"] == "koyo":
+                elif rid == "box_range":
                     m = 1.42 if s["price"] <= 10500 else (0.75 if s["price"] >= 17000 else 1.08)
                 else:
-                    m = 1.18 if r <= 7 else (1.45 if random.random() < 0.5 else 0.65)
+                    m = 1.18 if r <= 7 else (1.42 if random.random() < 0.5 else 0.64)
                 s["price"] = max(2000, round((s["price"] * m) / 100) * 100)
+                s.setdefault("history", [10000]).append(s["price"])
                 if s["price"] > s["prev"]:
                     up_cnt += 1
-            bg = next(s for s in stocks if s["id"] == "bangeo")
-            bg["price"] = max(2000, round((bg["price"] * (1.38 if up_cnt <= 2 else 0.88)) / 100) * 100)
+            for bg in inv_stocks:
+                bg["price"] = max(2000, round((bg["price"] * (1.38 if up_cnt <= 2 else 0.88)) / 100) * 100)
+                bg.setdefault("history", [10000]).append(bg["price"])
+
+            # Reveal 1 hidden stock rule per round!
+            hidden_stocks = [s for s in stocks if not s.get("rule_revealed")]
+            revealed_msg = ""
+            if hidden_stocks:
+                pick_rev = random.choice(hidden_stocks)
+                pick_rev["rule_revealed"] = True
+                revealed_msg = f"🔓 [{pick_rev['name']}] 룰 공개: {pick_rev['rule_desc']}"
+
             for p in room["players"]:
                 p["ready"] = False
             if room["round"] >= room["state"]["max_rounds"]:
                 room["phase"] = "DONE"
+                for s in stocks:
+                    s["rule_revealed"] = True
                 def total_a(pl):
                     return pl["cash"] + sum(pl["holdings"][s["id"]] * s["price"] for s in stocks)
                 top = max(room["players"], key=total_a)
                 room["banner"] = f"🏆 최종 1위: {top['name']} ({total_a(top):,}원!)"
+                room["log"] = "모든 종목의 숨겨진 룰이 공개되었습니다!"
             else:
                 room["round"] += 1
-                room["banner"] = f"📊 R{r} 마감! 상승 종목 {up_cnt}개 · 다음 거래를 준비하세요."
+                room["banner"] = f"📊 R{r} 마감! (상승 {up_cnt}종목) {revealed_msg}"
+                room["log"] = revealed_msg or "모든 룰이 공개되었습니다! 마지막까지 수익을 극대화하세요."
     return None
 
 
@@ -1310,9 +1359,24 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
             for b in st["banks"]
         ]
 
+    elif gt == "mystery_exchange" and "stocks" in st:
+        state_out["stocks"] = [
+            {
+                "id": s["id"],
+                "name": s["name"],
+                "price": s["price"],
+                "prev": s["prev"],
+                "history": s.get("history", [s["price"]]),
+                "rule_revealed": s.get("rule_revealed", False) or done,
+                "rule_desc": s.get("rule_desc", "") if (s.get("rule_revealed") or done) else None,
+            }
+            for s in st["stocks"]
+        ]
+
     return {
         "room_id": room["room_id"],
         "game_type": gt,
+        "rule_mode": room.get("rule_mode", "classic"),
         "meta": GAME_META[gt],
         "host_id": room["host_id"],
         "viewer_id": viewer_id,

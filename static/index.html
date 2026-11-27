@@ -42,7 +42,14 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v3.3 <span>방금 전</span></div>
+          <div class="patch-ver">v3.4 <span>방금 전</span></div>
+          <ul>
+            <li><strong>〈미스터리 거래소〉 PRO 업그레이드</strong>: <code>🏛️ 데블스 원작 룰</code> vs <code>🎲 랜덤 룰 섞기</code> 선택 + 종목별 <strong>비밀 룰 네모 가림(🔒) → 매 라운드 1개씩 공개</strong> + 실제 주가 히스토리 꺾은선 차트</li>
+            <li><strong>〈히든 워드〉 Gemini 2.5 Flash 한국어 3축 관계 AI</strong> 활성화 (<code>thinkingBudget: 0</code>)</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v3.3</div>
           <ul>
             <li><strong>〈히든 워드〉 원작 룰 전면 리뉴얼!</strong> (한글 명사 5개 봉투 선택 → 힌트 유사도 % 실시간 공개 → 95%↑ 조기종료 → 동시 추리)</li>
             <li><strong>Gemini Embedding AI (`GEMINI_API_KEY`)</strong> 연동 지원 + 키 미설정 시 내장 한국어 유사도 자동 폴백</li>
@@ -276,6 +283,13 @@
         </button>
         <label class="field-label">닉네임</label>
         <input id="mp-nick" class="text-input" maxlength="12" value="민우" placeholder="닉네임 입력" />
+        <div id="mp-ex-mode-row" class="chips-row hidden">
+          <span class="field-label" style="margin:0;">거래소 룰</span>
+          <div class="seg-group">
+            <button type="button" class="seg-btn mp-ex-mode active" data-rm="classic">🏛️ 데블스 원작</button>
+            <button type="button" class="seg-btn mp-ex-mode" data-rm="shuffle">🎲 랜덤 룰 섞기</button>
+          </div>
+        </div>
         <button id="btn-mp-solo" type="button" class="btn btn-gold btn-lg">
           <span>🤖 1인 플레이 (vs AI)</span>
           <small>AI들과 즉시 시작</small>

@@ -15,6 +15,7 @@ let mpSel = {
   rrSlot: 0, gmCard: null, gmTarget: null,
   pbCol: "black", pbCnt: 2, pbTarget: null,
   abBid: 3, wgR: null, wgC: null, wgWall: "N",
+  exRuleMode: "classic",
 };
 
 function mpStopPoll() {
@@ -52,6 +53,9 @@ function openMpGameEntry(gameType, title, dayLabel, desc) {
   $("mp-play-view").classList.add("hidden");
   $("btn-mp-save").classList.add("hidden");
   $("btn-mp-end").classList.add("hidden");
+  if ($("mp-ex-mode-row")) {
+    $("mp-ex-mode-row").classList.toggle("hidden", gameType !== "mystery_exchange");
+  }
 
   // Show resume button if saved room matches or exists
   const resBtn = $("btn-mp-resume");
@@ -82,7 +86,7 @@ async function mpCreate(mode) {
     const res = await fetch("/api/mp/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ game_type: mpGameType, name, mode }),
+      body: JSON.stringify({ game_type: mpGameType, name, mode, rule_mode: mpSel.exRuleMode }),
     });
     const out = await res.json();
     if (!res.ok || out.error) return mpShowErr(out.error || "방 생성 실패");
@@ -314,32 +318,51 @@ function renderMpHeavy13(d, me, board, ctrl, isHost) {
     <button type="button" class="btn btn-gold" style="padding:10px;" ${mpSel.h13Card === null || !mpSel.h13Chip ? "disabled" : ""} onclick="mpSend({card:mpSel.h13Card,chip:mpSel.h13Chip,rb_color:mpSel.h13Rb});mpSel.h13Card=null;mpSel.h13Chip=null;">🪨 동시 제출</button>`;
 }
 
-// --- 3. 미스터리 거래소 (with Live SVG Trend Sparklines) ---
+// --- 3. 미스터리 거래소 (Real History Line Chart + Redacted Secret Rules Revealed 1/Round) ---
+function buildHistorySvg(hist, strokeCol) {
+  const arr = (hist && hist.length >= 2) ? hist : [10000, 10000];
+  const mn = Math.min(...arr) * 0.95;
+  const mx = Math.max(...arr) * 1.05;
+  const span = Math.max(1, mx - mn);
+  const pts = arr.map((v, i) => {
+    const x = 2 + (i / (arr.length - 1)) * 68;
+    const y = 24 - ((v - mn) / span) * 20;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return `<svg class="stock-spark" style="width:72px;height:26px;" viewBox="0 0 72 26"><polyline fill="none" stroke="${strokeCol}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${pts}"/></svg>`;
+}
+
 function renderMpExchange(d, me, board, ctrl, isHost) {
-  $("mp-hud-round").textContent = `R${d.round} / 10`;
+  const modeTag = d.state.rule_mode === "shuffle" ? "🎲 랜덤룰" : "🏛️ 원작룰";
+  $("mp-hud-round").textContent = `R${d.round}/10 · ${modeTag}`;
   $("mp-hud-mid").textContent = `현금 ${(me.cash || 0).toLocaleString()}`;
   $("mp-hud-right").textContent = `자산 ${Math.round(me.total_asset / 1000)}k`;
   board.innerHTML = d.state.stocks.map((s) => {
     const q = (me.holdings && me.holdings[s.id]) || 0;
     const pct = s.prev ? Math.round(((s.price - s.prev) / s.prev) * 100) : 0;
     const chg = pct > 0 ? `<span class="up">▲+${pct}%</span>` : pct < 0 ? `<span class="down">▼${pct}%</span>` : `<span>0%</span>`;
-    const strokeCol = pct > 0 ? "#ff6b6b" : pct < 0 ? "#4dabf7" : "#888";
-    const yEnd = pct > 0 ? 4 : pct < 0 ? 20 : 12;
-    const spark = `<svg class="stock-spark" viewBox="0 0 56 24"><polyline fill="none" stroke="${strokeCol}" stroke-width="2" points="2,14 18,12 36,${pct > 0 ? 15 : 9} 54,${yEnd}"/></svg>`;
-    return `<div class="stock-row">
-      <div class="stock-info"><div class="stock-name">${s.name} ${q > 0 ? `<span class="stock-qty">${q}주</span>` : ""}</div><div class="stock-price">${s.price.toLocaleString()}원 ${chg}</div></div>
-      ${spark}
-      <div class="stock-btns">
-        <button class="st-act buy" ${d.phase === "DONE" || me.ready || me.cash < s.price ? "disabled" : ""} onclick="mpSend({action:'buy1',stock_id:'${s.id}'})">+1</button>
-        <button class="st-act all" ${d.phase === "DONE" || me.ready || me.cash < s.price ? "disabled" : ""} onclick="mpSend({action:'buyMax',stock_id:'${s.id}'})">MAX</button>
-        <button class="st-act sell" ${d.phase === "DONE" || me.ready || q <= 0 ? "disabled" : ""} onclick="mpSend({action:'sellAll',stock_id:'${s.id}'})">매도</button>
+    const strokeCol = pct > 0 ? "#ff6b6b" : pct < 0 ? "#4dabf7" : "#20c997";
+    const spark = buildHistorySvg(s.history, strokeCol);
+    const ruleBar = s.rule_revealed
+      ? `<div class="stock-rule-open">🔓 ${s.rule_desc}</div>`
+      : `<div class="stock-rule-locked">🔒 비밀 룰 <span class="redact-box">■■■■■■■■■■</span></div>`;
+    return `<div class="stock-card-wrap">
+      <div class="stock-row" style="border:none;background:none;padding:0;">
+        <div class="stock-info"><div class="stock-name">${s.name} ${q > 0 ? `<span class="stock-qty">${q}주</span>` : ""}</div><div class="stock-price">${s.price.toLocaleString()}원 ${chg}</div></div>
+        ${spark}
+        <div class="stock-btns">
+          <button class="st-act buy" ${d.phase === "DONE" || me.ready || me.cash < s.price ? "disabled" : ""} onclick="mpSend({action:'buy1',stock_id:'${s.id}'})">+1</button>
+          <button class="st-act all" ${d.phase === "DONE" || me.ready || me.cash < s.price ? "disabled" : ""} onclick="mpSend({action:'buyMax',stock_id:'${s.id}'})">MAX</button>
+          <button class="st-act sell" ${d.phase === "DONE" || me.ready || q <= 0 ? "disabled" : ""} onclick="mpSend({action:'sellAll',stock_id:'${s.id}'})">매도</button>
+        </div>
       </div>
+      ${ruleBar}
     </div>`;
   }).join("");
   if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
   const ranks = [...d.players].sort((a, b) => b.total_asset - a.total_asset).map((p, i) => `${i + 1}.${p.name}(${Math.round(p.total_asset / 1000)}k${p.ready ? "✅" : ""})`).join(" · ");
   ctrl.innerHTML = `<div style="font-size:11px;color:#ccc;text-align:center;">${ranks}</div>
-    ${me.ready ? `<div class="wait-pill">⏳ 거래 완료! 다른 플레이어 마감 대기 중...</div>` : `<button type="button" class="btn btn-gold" style="padding:10px;" onclick="mpSend({action:'ready'})">📈 이번 라운드 거래 완료</button>`}`;
+    ${me.ready ? `<div class="wait-pill">⏳ 거래 완료! 다른 플레이어 마감 대기 중...</div>` : `<button type="button" class="btn btn-gold" style="padding:10px;" onclick="mpSend({action:'ready'})">📈 이번 라운드 거래 완료 (다음 룰 1개 공개)</button>`}`;
 }
 
 // --- 4. 러시안 룰렛 (Circular 16-Chamber Interactive SVG Revolver Cylinder!) ---
@@ -462,6 +485,15 @@ function renderMpPiggyBank(d, me, board, ctrl, isHost) {
     </div>`;
   }
 }
+
+// Exchange rule mode selector
+document.querySelectorAll(".mp-ex-mode").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".mp-ex-mode").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    mpSel.exRuleMode = btn.dataset.rm;
+  });
+});
 
 // Button Bindings
 if ($("btn-mp-solo")) $("btn-mp-solo").onclick = () => mpCreate("solo");

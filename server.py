@@ -1222,6 +1222,8 @@ async def mp_create(payload: dict):
         while STORE.get_json(f"hs:mp:{rid}") is not None:
             rid = mp_engine.gen_code()
         room = mp_engine.create_mp_room(gt, name, rid)
+        if payload.get("rule_mode") in ("classic", "shuffle"):
+            room["rule_mode"] = payload["rule_mode"]
         if mode == "solo":
             ai_cnt = int(payload.get("ai_count", mp_engine.GAME_META[gt]["max_players"] - 1))
             for _ in range(ai_cnt):

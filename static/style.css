@@ -2411,3 +2411,34 @@ body {
 .hw-sim-pct.hot { color: #ff6b6b; }
 .hw-sim-pct.warm { color: #f7df8c; }
 .hw-sim-pct.cool { color: #74c0fc; }
+
+/* Mystery Exchange Redacted Secret Rules & Card Wrap */
+.stock-card-wrap {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 11px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.stock-rule-locked {
+  font-size: 10.5px;
+  color: #888;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.redact-box {
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.25);
+}
+.stock-rule-open {
+  font-size: 11px;
+  font-weight: 800;
+  color: #63e6be;
+  background: rgba(32, 201, 151, 0.14);
+  border: 1px solid rgba(32, 201, 151, 0.35);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
