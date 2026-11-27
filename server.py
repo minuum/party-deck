@@ -833,6 +833,7 @@ async def health():
         "redis_ok": redis_ok,
         "redis_write_ok": redis_write_ok,
         "redis_detail": redis_detail,
+        "gemini_ai": bool(os.environ.get("GEMINI_API_KEY", "").strip()),
     }
 
 

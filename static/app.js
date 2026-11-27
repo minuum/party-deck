@@ -1085,7 +1085,7 @@ const GAME_CATALOG = [
   { id: "mystery_exchange", name: "미스터리 거래소", cat: "main", catLabel: "메인매치", day: "2일차", progress: 100, playable: true, desc: "2일차 메인매치 · 7개 종목의 숨겨진 가격 패턴을 파악해 자산을 불리는 10라운드 주식 거래" },
   { id: "gem_market", name: "보석 암시장", cat: "main", catLabel: "메인매치", day: "3일차", progress: 100, playable: true, desc: "3일차 메인매치 · 보석/폭탄 교환 + 비공개 마니또 곱셈 점수로 승부하는 5라운드 심리전" },
   { id: "auction_bingo", name: "경매 빙고", cat: "main", catLabel: "메인매치", day: "4일차", progress: 100, playable: true, desc: "4일차 메인매치 · 칩 비공개 입찰로 5×5 빙고 숫자를 낙찰받아 3줄을 먼저 완성하는 경매 전략전" },
-  { id: "hidden_word", name: "히든 워드", cat: "main", catLabel: "메인매치", day: "5일차", progress: 100, playable: true, desc: "5일차 메인매치 · 힌트와 초록/노랑 글자 판정으로 5글자 비밀 영단어를 먼저 맞히는 추론전" },
+  { id: "hidden_word", name: "히든 워드", cat: "main", catLabel: "메인매치", day: "5일차", progress: 100, playable: true, desc: "5일차 메인매치 · 명사 5개 봉투 선택 + Gemini AI 유사도(%) 힌트(95%↑ 조기종료) 기반 한글 추리전" },
 
   { id: "heavy_13", name: "무거운 13", cat: "prison", catLabel: "감옥매치", day: "1일차", progress: 100, playable: true, desc: "1일차 감옥매치 · 바위 카드(0~6)와 3색+레인보우 칩으로 임계점 13을 피하는 14라운드 전략전" },
   { id: "russian_roulette", name: "러시안 룰렛", cat: "prison", catLabel: "감옥매치", day: "2일차", progress: 100, playable: true, desc: "2일차 감옥매치 · 16약실·2실탄! 크레딧으로 조사·총구 회전·약실 조작 후 격발 생존전" },

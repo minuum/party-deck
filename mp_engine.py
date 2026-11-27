@@ -1,6 +1,10 @@
+import json
+import math
+import os
 import random
 import string
-from typing import Dict, List, Optional
+import urllib.request
+from typing import Dict, List, Optional, Tuple
 
 BOT_NAMES = ["VIPER", "NOVA", "KRONOS", "ORION", "ZEPHYR", "ATLAS"]
 
@@ -17,20 +21,99 @@ GAME_META = {
     "formula_tower": {"title": "수식의 탑", "day": "5일차 감옥매치", "max_players": 5, "min_players": 2},
 }
 
-HW_WORDS = [
-    {"word": "DEVIL", "hint": "악마 · 이 프로그램의 상징"},
-    {"word": "BRAIN", "hint": "두뇌 · 서바이벌의 무기"},
-    {"word": "ROYAL", "hint": "왕실 · 최고의 패"},
-    {"word": "LOGIC", "hint": "논리 · 추론의 핵심"},
-    {"word": "CHESS", "hint": "체스 · 고전 전략 보드게임"},
-    {"word": "BLUFF", "hint": "블러핑 · 거짓 베팅 심리전"},
-    {"word": "PRIZE", "hint": "상금 · 최종 우승 보상"},
-    {"word": "PIECE", "hint": "피스 · 생존과 승리의 화폐"},
-    {"word": "TRICK", "hint": "트릭 · 상대를 속이는 수"},
-    {"word": "CROWN", "hint": "왕관 · 최후 1인의 영예"},
-    {"word": "MATCH", "hint": "매치 · 메인과 감옥의 대결"},
-    {"word": "POWER", "hint": "힘 · 판을 지배하는 능력"},
+HW_ENVELOPES = [
+    ["우산", "도서관", "화산", "나침반", "시계"],
+    ["지하철", "사막", "피아노", "망원경", "등대"],
+    ["커피", "우주선", "바이올린", "미로", "빙하"],
+    ["카메라", "오로라", "체스", "열기구", "모래시계"],
+    ["비행기", "해바라기", "가면", "다이아몬드", "폭포"],
+    ["교실", "펭귄", "거울", "잠수함", "불꽃놀이"],
 ]
+
+HW_HINTS_BANK = {
+    "우산": ["비", "장마", "손잡이", "방수", "날씨", "우비"],
+    "도서관": ["책", "열람실", "사서", "대출", "공부", "서점"],
+    "화산": ["용암", "마그마", "분화", "지진", "산", "폭발"],
+    "나침반": ["방향", "자석", "북쪽", "지도", "항해", "탐험"],
+    "시계": ["시간", "바늘", "알람", "손목", "초침", "약속"],
+    "지하철": ["전철", "역", "선로", "출퇴근", "교통카드", "열차"],
+    "사막": ["모래", "낙타", "오아시스", "건조", "태양", "선인장"],
+    "피아노": ["건반", "음악", "연주", "악기", "화음", "클래식"],
+    "망원경": ["별", "관측", "렌즈", "우주", "천문학", "확대"],
+    "등대": ["바다", "불빛", "항구", "배", "해안", "안내"],
+    "커피": ["카페", "원두", "카페인", "에스프레소", "아침", "향기"],
+    "우주선": ["로켓", "우주", "발사", "행성", "비행", "달"],
+    "바이올린": ["현악기", "활", "오케스트라", "선율", "음악", "연주"],
+    "미로": ["출구", "길", "복잡", "퍼즐", "탈출", "벽"],
+    "빙하": ["얼음", "남극", "북극", "바다", "눈", "추위"],
+    "카메라": ["사진", "렌즈", "셔터", "촬영", "필름", "추억"],
+    "오로라": ["극지방", "하늘", "빛", "밤", "초록", "자연"],
+    "체스": ["킹", "퀸", "보드게임", "전략", "말", "체크메이트"],
+    "열기구": ["하늘", "풍선", "바람", "불꽃", "비행", "여행"],
+    "모래시계": ["모래", "시간", "유리", "측정", "제한", "뒤집기"],
+    "비행기": ["공항", "하늘", "날개", "여행", "조종사", "활주로"],
+    "해바라기": ["꽃", "태양", "노랑", "씨앗", "여름", "식물"],
+    "가면": ["얼굴", "위장", "축제", "비밀", "연극", "마스크"],
+    "다이아몬드": ["보석", "반지", "광채", "투명", "고급", "경도"],
+    "폭포": ["물", "절벽", "계곡", "시원", "물줄기", "자연"],
+    "교실": ["칠판", "학교", "책상", "학생", "선생님", "수업"],
+    "펭귄": ["남극", "얼음", "새", "수영", "흑백", "추위"],
+    "거울": ["반사", "얼굴", "유리", "모습", "화장대", "빛"],
+    "잠수함": ["바다", "심해", "잠수", "해군", "어뢰", "수중"],
+    "불꽃놀이": ["밤하늘", "축제", "폭죽", "빛", "소리", "여름"],
+}
+
+
+def _gemini_embed(text: str, api_key: str) -> Optional[List[float]]:
+    for model in ("gemini-embedding-001", "text-embedding-004"):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={api_key}"
+        body = json.dumps({"model": f"models/{model}", "content": {"parts": [{"text": text}]}}).encode("utf-8")
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                vals = data.get("embedding", {}).get("values")
+                if vals:
+                    return vals
+        except Exception:
+            continue
+    return None
+
+
+def compute_korean_similarity(secret: str, word: str) -> Tuple[float, str]:
+    s = secret.strip()
+    w = word.strip()
+    if not s or not w:
+        return 0.0, "empty"
+    if s == w:
+        return 100.0, "exact"
+
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
+    if api_key:
+        v1 = _gemini_embed(s, api_key)
+        v2 = _gemini_embed(w, api_key)
+        if v1 and v2 and len(v1) == len(v2):
+            dot = sum(a * b for a, b in zip(v1, v2))
+            n1 = math.sqrt(sum(a * a for a in v1))
+            n2 = math.sqrt(sum(b * b for b in v2))
+            cos = dot / (n1 * n2) if n1 and n2 else 0.0
+            # Scale cosine [0.35 .. 0.96] -> [5.0 .. 98.5]
+            pct = max(1.0, min(98.5, ((cos - 0.35) / 0.61) * 93.5 + 5.0))
+            return round(pct, 1), "gemini"
+
+    # Built-in fallback semantic + lexical scorer when GEMINI_API_KEY is not set
+    rel = HW_HINTS_BANK.get(s, [])
+    if w in rel:
+        idx = rel.index(w)
+        return round(88.0 - idx * 4.5 + random.uniform(-1.5, 1.5), 1), "local"
+    if any(w in r or r in w for r in rel):
+        return round(72.0 + random.uniform(-4.0, 6.0), 1), "local"
+    # Shared Hangul syllables
+    overlap = len(set(s) & set(w))
+    base = 18.0 + overlap * 19.0
+    # Deterministic hash jitter so same word always yields same score
+    h = sum(ord(ch) for ch in (s + w)) % 17
+    return round(min(94.0, base + h), 1), "local"
 
 GM_CARDS = [
     {"id": "dia", "label": "💎 다이아", "pts": 5, "isBomb": False},
@@ -223,18 +306,24 @@ def start_mp_game(room: dict):
         _wg_advance_ai(room)
 
     elif gt == "hidden_word":
-        pick = random.choice(HW_WORDS)
         for p in ps:
-            p["guesses"] = []
-            p["solved"] = False
+            p["score"] = 0
+            p["pending_guess"] = None
+            p["last_guess"] = "-"
+        env = random.choice(HW_ENVELOPES)
         room["state"] = {
-            "secret": pick["word"],
-            "hint": pick["hint"],
-            "max_rounds": 6,
-            "winner_name": None,
+            "sub_phase": "PICK_SECRET",  # PICK_SECRET, HINT, GUESS
+            "setter_idx": 0,
+            "envelope": list(env),
+            "secret": "",
+            "hints": [],  # [{word, sim, engine}]
+            "max_hints": 10,
+            "max_rounds": len(ps),
+            "ai_engine": "gemini" if os.environ.get("GEMINI_API_KEY") else "local",
         }
-        room["banner"] = f"🔤 히든 워드 시작! 힌트: [{pick['hint']}] (5글자 영단어)"
-        room["log"] = "초록(자리+글자 일치) / 노랑(포함) 힌트로 먼저 정답을 맞히세요!"
+        room["banner"] = f"🔤 라운드 1 · 출제자 [{ps[0]['name']}]님이 봉투(5개 명사) 중 1개를 히든 워드로 고릅니다!"
+        room["log"] = "유사도 95% 이상 힌트가 나오면 즉시 힌트 단계가 조기 종료됩니다!"
+        _hw_advance_ai(room)
 
     elif gt == "formula_tower":
         for p in ps:
@@ -905,41 +994,126 @@ def _act_wall_go(room: dict, me: dict, payload: dict):
     return None
 
 
-# --- 9. 히든 워드 (Hidden Word) ---
-def _hw_eval(guess: str, secret: str) -> List[str]:
-    res = ["r"] * 5
-    rem: Dict[str, int] = {}
-    for i in range(5):
-        if guess[i] == secret[i]:
-            res[i] = "g"
-        else:
-            rem[secret[i]] = rem.get(secret[i], 0) + 1
-    for i in range(5):
-        if res[i] == "g":
-            continue
-        if rem.get(guess[i], 0) > 0:
-            res[i] = "y"
-            rem[guess[i]] -= 1
-    return res
+# --- 9. 히든 워드 (Original Day 5 Main Match: Korean Noun AI Similarity) ---
+def _hw_advance_ai(room: dict):
+    st = room["state"]
+    ps = room["players"]
+    setter = ps[st["setter_idx"]]
+    if st["sub_phase"] == "PICK_SECRET" and setter["is_ai"]:
+        st["secret"] = random.choice(st["envelope"])
+        st["sub_phase"] = "HINT"
+        # AI setter gives 3 strategic Korean noun hints automatically
+        bank = list(HW_HINTS_BANK.get(st["secret"], ["자연", "사물", "일상"]))
+        random.shuffle(bank)
+        for hw in bank[:3]:
+            sim, eng = compute_korean_similarity(st["secret"], hw)
+            st["hints"].append({"word": hw, "sim": sim, "engine": eng})
+            st["ai_engine"] = eng
+        st["sub_phase"] = "GUESS"
+        room["banner"] = f"🤖 출제자 {setter['name']}이(가) 힌트 {len(st['hints'])}개를 공개했습니다! 히든 워드를 유추하세요!"
+        room["log"] = "힌트와 AI 유사도(%)를 보고 정확한 한글 명사를 제출하세요!"
 
 
 def _act_hidden_word(room: dict, me: dict, payload: dict):
-    guess = (payload.get("guess") or "").strip().upper()
-    if len(guess) != 5 or not guess.isalpha():
-        return "영문 5글자 단어를 입력하세요."
     st = room["state"]
-    cols = _hw_eval(guess, st["secret"])
-    me["guesses"].append({"text": guess, "colors": cols})
-    if cols.count("g") == 5:
-        me["solved"] = True
-        room["phase"] = "DONE"
-        st["winner_name"] = me["name"]
-        room["banner"] = f"🏆 히든 워드 정답! {me['name']}님 우승! (정답: {st['secret']})"
-    else:
-        g = cols.count("g")
-        y = cols.count("y")
-        room["banner"] = f"🔤 {me['name']} 추리: 🟩{g} 🟨{y} · 힌트: [{st['hint']}]"
-    return None
+    ps = room["players"]
+    setter = ps[st["setter_idx"]]
+    act = payload.get("action", "")
+
+    if st["sub_phase"] == "PICK_SECRET":
+        if me["id"] != setter["id"]:
+            return "출제자만 히든 워드를 선택할 수 있습니다."
+        word = (payload.get("word") or "").strip()
+        if word not in st["envelope"]:
+            return "봉투 속 5개 단어 중 1개를 선택하세요."
+        st["secret"] = word
+        st["sub_phase"] = "HINT"
+        room["banner"] = f"🔐 히든 워드 확정! 이제 한글 명사 힌트를 제시하세요 (최대 10개, 95%↑ 조기종료)"
+        return None
+
+    if st["sub_phase"] == "HINT":
+        if me["id"] != setter["id"]:
+            return "출제자만 힌트를 낼 수 있습니다."
+        if act == "finish_hints":
+            if not st["hints"]:
+                return "최소 1개 이상의 힌트를 제시해야 합니다."
+            st["sub_phase"] = "GUESS"
+            room["banner"] = f"🎯 힌트 종료! 나머지 플레이어들은 {setter['name']}님의 히든 워드를 유추하세요!"
+            return None
+        word = (payload.get("word") or "").strip()
+        if not word or len(word) > 12:
+            return "한글 명사 힌트를 입력하세요."
+        if word == st["secret"]:
+            return "정답 단어 그대로는 힌트로 낼 수 없습니다!"
+        sim, eng = compute_korean_similarity(st["secret"], word)
+        st["ai_engine"] = eng
+        st["hints"].append({"word": word, "sim": sim, "engine": eng})
+        if sim >= 95.0 or len(st["hints"]) >= st["max_hints"]:
+            st["sub_phase"] = "GUESS"
+            reason = "🔥 유사도 95% 이상 조기 종료!" if sim >= 95.0 else "힌트 10개 소진!"
+            room["banner"] = f"{reason} 이제 나머지 플레이어들이 히든 워드를 추리합니다!"
+        else:
+            room["banner"] = f"💡 힌트 [{word}] → AI 유사도 {sim}%! ({len(st['hints'])}/10)"
+        return None
+
+    if st["sub_phase"] == "GUESS":
+        if me["id"] == setter["id"]:
+            return "출제자는 정답을 제출할 수 없습니다."
+        guess = (payload.get("guess") or "").strip()
+        if not guess:
+            return "추리할 한글 명사를 입력하세요."
+        sim, eng = compute_korean_similarity(st["secret"], guess)
+        st["ai_engine"] = eng
+        me["pending_guess"] = {"word": guess, "sim": sim}
+
+        # AI guessers submit
+        for p in ps:
+            if p["id"] != setter["id"] and p["is_ai"] and p["pending_guess"] is None:
+                ai_w = st["secret"] if random.random() < 0.25 else random.choice(st["envelope"])
+                asim, _ = compute_korean_similarity(st["secret"], ai_w)
+                p["pending_guess"] = {"word": ai_w, "sim": asim}
+
+        guessers = [p for p in ps if p["id"] != setter["id"]]
+        if all(p["pending_guess"] is not None for p in guessers):
+            any_exact = False
+            for p in guessers:
+                g = p["pending_guess"]
+                p["last_guess"] = f"{g['word']}({g['sim']}%)"
+                if g["word"] == st["secret"] or g["sim"] >= 99.9:
+                    p["score"] += 3
+                    any_exact = True
+                elif g["sim"] >= 85.0:
+                    p["score"] += 1
+                p["pending_guess"] = None
+            max_hint_sim = max((h["sim"] for h in st["hints"]), default=0)
+            if not any_exact and max_hint_sim >= 50.0:
+                setter["score"] += 2
+                setter["last_guess"] = "방어성공(+2)"
+            else:
+                setter["last_guess"] = f"정답:{st['secret']}"
+
+            prev_secret = st["secret"]
+            if room["round"] >= st["max_rounds"]:
+                room["phase"] = "DONE"
+                champ = max(ps, key=lambda x: x["score"])
+                room["banner"] = f"🏆 히든 워드 최종 우승: {champ['name']} ({champ['score']}점)!"
+                room["log"] = f"마지막 라운드 정답: [{prev_secret}]"
+            else:
+                room["round"] += 1
+                st["setter_idx"] = (st["setter_idx"] + 1) % len(ps)
+                st["envelope"] = list(random.choice(HW_ENVELOPES))
+                st["secret"] = ""
+                st["hints"] = []
+                st["sub_phase"] = "PICK_SECRET"
+                nxt = ps[st["setter_idx"]]
+                room["banner"] = f"✨ 직전 정답 [{prev_secret}]! R{room['round']} 출제자: {nxt['name']}"
+                room["log"] = f"{nxt['name']}님이 새 봉투에서 히든 워드를 선택합니다."
+                _hw_advance_ai(room)
+        else:
+            w = sum(1 for p in guessers if p["pending_guess"] is None)
+            room["log"] = f"⏳ 다른 추리자 {w}명 제출 대기 중..."
+        return None
+    return "현재 수행할 수 없는 행동입니다."
 
 
 # --- 10. 수식의 탑 (Formula Tower) ---
@@ -1061,9 +1235,10 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
             })
         elif gt == "hidden_word":
             po.update({
-                "tries": len(p.get("guesses", [])),
-                "guesses": p.get("guesses", []) if (is_me or done) else [],
-                "solved": p.get("solved", False),
+                "score": p.get("score", 0),
+                "last_guess": p.get("last_guess", "-"),
+                "submitted": p.get("pending_guess") is not None,
+                "is_setter": idx == st.get("setter_idx", 0),
             })
         elif gt == "formula_tower":
             po.update({
@@ -1074,8 +1249,11 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
         players_out.append(po)
 
     state_out = dict(st)
-    if gt == "hidden_word" and not done:
-        state_out["secret"] = None
+    if gt == "hidden_word":
+        setter_id = ps[st.get("setter_idx", 0)]["id"] if ps else ""
+        if viewer_id != setter_id and not done:
+            state_out["secret"] = None
+            state_out["envelope"] = []
     if gt == "russian_roulette" and "chambers" in st:
         state_out["chambers"] = [
             {

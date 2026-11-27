@@ -568,23 +568,70 @@ function renderMpWallGo(d, me, board, ctrl, isHost) {
     <button class="btn btn-gold" style="padding:10px;" onclick="mpSend({r:${tr},c:${tc},wall_dir:mpSel.wgWall});mpSel.wgR=null;mpSel.wgC=null;">🧱 (${tr + 1},${tc + 1}) 이동 &amp; 벽 설치</button>`;
 }
 
-// --- 9. 히든 워드 (Hidden Word) ---
+// --- 9. 히든 워드 (Original Korean Noun AI Similarity: Envelope -> Hint(%) -> Guess) ---
 function renderMpHiddenWord(d, me, board, ctrl, isHost) {
-  $("mp-hud-round").textContent = `시도 ${me.tries}회`;
-  $("mp-hud-mid").textContent = `힌트: ${d.state.hint}`;
-  $("mp-hud-right").textContent = "5글자 영단어";
-  const rows = (me.guesses || []).map((g) => `
-    <div class="hw-row">${g.text.split("").map((ch, i) => `<div class="hw-cell ${g.colors[i]}">${ch}</div>`).join("")}</div>
-  `).join("");
+  const st = d.state;
+  const setter = d.players[st.setter_idx];
+  const isSetter = me.is_setter;
+  const engBadge = st.ai_engine === "gemini" ? "🧠 Gemini AI" : "⚙️ 내장 유사도";
+  $("mp-hud-round").textContent = `R${d.round}/${st.max_rounds}`;
+  $("mp-hud-mid").textContent = `출제: ${setter ? setter.name : "-"}`;
+  $("mp-hud-right").textContent = engBadge;
+
+  const hintsHtml = (st.hints || []).length
+    ? st.hints
+        .map((h, i) => {
+          const lvl = h.sim >= 85 ? "hot" : h.sim >= 60 ? "warm" : "cool";
+          return `<div class="hw-sim-row">
+            <span class="hw-sim-word">#${i + 1} ${h.word}</span>
+            <div class="hw-sim-bar"><div class="hw-sim-fill ${lvl}" style="width:${Math.min(100, h.sim)}%"></div></div>
+            <strong class="hw-sim-pct ${lvl}">${h.sim}%</strong>
+          </div>`;
+        })
+        .join("")
+    : `<div class="wait-pill">아직 공개된 힌트가 없습니다.</div>`;
+
   board.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:5px;">${rows || `<div class="wait-pill">아직 추리 기록이 없습니다. 아래에서 5글자 영단어를 입력하세요!</div>`}</div>
-    <div class="d1-score-grid" style="margin-top:6px;">${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name}</span><strong>${p.solved ? "🏆 정답!" : `${p.tries}회 시도`}</strong></div>`).join("")}</div>`;
+    <div class="d1-score-grid">${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.is_setter ? "🎤" : ""}${p.name} <small>${p.submitted ? "✅" : p.last_guess}</small></span><strong>${p.score}점</strong></div>`).join("")}</div>
+    ${isSetter && st.secret ? `<div class="role-banner host" style="text-align:center;">🔐 내 히든 워드: <strong>${st.secret}</strong></div>` : ""}
+    <div class="hw-sim-list">${hintsHtml}</div>`;
+
   if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
-  ctrl.innerHTML = `
-    <div style="display:flex;gap:8px;">
-      <input id="mp-hw-in" class="text-input code-input" maxlength="5" placeholder="예: BRAIN" />
-      <button class="btn btn-gold" style="padding:0 16px;white-space:nowrap;" onclick="mpSend({guess:$('mp-hw-in').value})">제출</button>
-    </div>`;
+
+  if (st.sub_phase === "PICK_SECRET") {
+    if (!isSetter) {
+      ctrl.innerHTML = `<div class="wait-pill">⏳ 출제자 ${setter.name}님이 봉투(5개 명사) 중 1개를 고르는 중...</div>`;
+      return;
+    }
+    ctrl.innerHTML = `
+      <div class="h13-pick-label">✉️ 봉투 속 5개 명사 중 내 히든 워드 1개 선택</div>
+      <div class="h13-row">${(st.envelope || []).map((w) => `<button type="button" class="h13-chip" onclick="mpSend({word:'${w}'})">${w}</button>`).join("")}</div>`;
+  } else if (st.sub_phase === "HINT") {
+    if (!isSetter) {
+      ctrl.innerHTML = `<div class="wait-pill">⏳ ${setter.name}님이 한글 명사 힌트를 제출 중... (${(st.hints || []).length}/10)</div>`;
+      return;
+    }
+    ctrl.innerHTML = `
+      <div style="display:flex;gap:6px;">
+        <input id="mp-hw-hint" class="text-input" placeholder="한글 명사 힌트 입력 (95%↑ 조기종료)" />
+        <button class="btn btn-gold" style="padding:0 14px;white-space:nowrap;" onclick="mpSend({word:$('mp-hw-hint').value})">힌트</button>
+      </div>
+      ${(st.hints || []).length > 0 ? `<button class="btn btn-outline" style="padding:8px;font-size:12.5px;" onclick="mpSend({action:'finish_hints'})">🎯 힌트 종료 · 상대 추리 시작</button>` : ""}`;
+  } else if (st.sub_phase === "GUESS") {
+    if (isSetter) {
+      ctrl.innerHTML = `<div class="wait-pill">⏳ 다른 플레이어들이 내 히든 워드 [${st.secret}]를 추리하는 중...</div>`;
+      return;
+    }
+    if (me.submitted) {
+      ctrl.innerHTML = `<div class="wait-pill">⏳ 추리 제출 완료! 다른 플레이어를 기다리는 중...</div>`;
+      return;
+    }
+    ctrl.innerHTML = `
+      <div style="display:flex;gap:6px;">
+        <input id="mp-hw-guess" class="text-input" placeholder="출제자의 히든 워드(한글 명사) 추리" />
+        <button class="btn btn-gold" style="padding:0 16px;white-space:nowrap;" onclick="mpSend({guess:$('mp-hw-guess').value})">제출</button>
+      </div>`;
+  }
 }
 
 // --- 10. 수식의 탑 (Formula Tower) ---
