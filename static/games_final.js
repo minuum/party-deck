@@ -19,12 +19,25 @@ let flPollTimer = null;
 let flPollBusy = false;
 let flLastServerSig = "";
 let flAnimateRowIdx = -1;
+let flFbSource = null;
+let flFbReady = false;
+let flFbConnected = false;
+
+function flDisconnectFb() {
+  if (flFbSource) {
+    try { flFbSource.close(); } catch (_) {}
+    flFbSource = null;
+  }
+  flFbConnected = false;
+  flFbReady = false;
+}
 
 function flStopPoll() {
   if (flPollTimer) {
     clearTimeout(flPollTimer);
     flPollTimer = null;
   }
+  flDisconnectFb();
 }
 
 function flExitToHub() {
@@ -501,11 +514,35 @@ function flApplyServerData(d, fromSubmit = false) {
   renderFormulaLight();
 }
 
+function flConnectFb() {
+  if (flFbSource || !window.PD_FIREBASE_URL || !flState || flState.mode !== "friend" || !flState.roomId || document.hidden) return;
+  try {
+    flFbReady = false;
+    flFbSource = new EventSource(`${window.PD_FIREBASE_URL}/signals/fl_${flState.roomId.toUpperCase()}.json`);
+    const onSig = () => {
+      flFbConnected = true;
+      if (!flFbReady) { flFbReady = true; return; }
+      if (!flPollBusy && flState && flState.roomId) {
+        flPollBusy = true;
+        fetch(`/api/fl/${flState.roomId}?player_id=${encodeURIComponent(flState.playerId)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((out) => { if (out && out.data) flApplyServerData(out.data, false); })
+          .catch(() => {})
+          .finally(() => { flPollBusy = false; });
+      }
+    };
+    flFbSource.addEventListener("put", onSig);
+    flFbSource.addEventListener("patch", onSig);
+    flFbSource.onerror = () => { flFbConnected = false; };
+  } catch (_) { flFbConnected = false; }
+}
+
 function flStartPoll() {
-  flStopPoll();
+  if (flPollTimer) { clearTimeout(flPollTimer); flPollTimer = null; }
   if (document.hidden || !flState || flState.mode !== "friend" || !flState.roomId || !flState.playerId) return;
-  if (flState.phase === "DONE") return;
-  const ms = flState.phase === "WAITING" ? 2500 : (flState.myPending ? 1400 : 3500);
+  if (flState.phase === "DONE") { flDisconnectFb(); return; }
+  flConnectFb();
+  const ms = flFbConnected ? 15000 : (flState.phase === "WAITING" ? 2500 : (flState.myPending ? 1400 : 3500));
   flPollTimer = setTimeout(async () => {
     flPollTimer = null;
     if (document.hidden || !flState || flState.mode !== "friend") return;

@@ -17,6 +17,10 @@ let selectedChips = 30;
 let selectedAiCount = 4;
 let roomId = sessionStorage.getItem("hs_room") || "";
 let playerId = sessionStorage.getItem("hs_pid") || "";
+window.PD_FIREBASE_URL = "";
+let hsFbSource = null;
+let hsFbReady = false;
+let hsFbConnected = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -114,6 +118,7 @@ function getHsPollInterval() {
   if (!state) return 700;
   if (state.ai_pending) return 600;
   if (state.solo_mode) return null; // 1인 AI 대전: 내 차례/종료 시 폴링 정지 (0 req/s)
+  if (hsFbConnected) return 15000; // Firebase SSE 연결 중: 백업 동기화만 15초마다
   if (state.phase === "LOBBY" || state.phase === "GAME_OVER") return 2500;
   const me = (state.players || []).find((p) => p.id === state.viewer_id);
   if (me) {
@@ -121,6 +126,37 @@ function getHsPollInterval() {
     if (me.is_turn) return 3500;
   }
   return 1400;
+}
+
+function connectHsFirebase() {
+  disconnectHsFirebase();
+  if (!window.PD_FIREBASE_URL || !roomId || document.hidden || (state && state.solo_mode)) return;
+  try {
+    hsFbReady = false;
+    hsFbSource = new EventSource(`${window.PD_FIREBASE_URL}/signals/hs_${roomId}.json`);
+    const onSig = () => {
+      hsFbConnected = true;
+      if (!hsFbReady) { hsFbReady = true; scheduleHsPoll(); return; }
+      fetchState();
+    };
+    hsFbSource.addEventListener("put", onSig);
+    hsFbSource.addEventListener("patch", onSig);
+    hsFbSource.onerror = () => {
+      hsFbConnected = false;
+      scheduleHsPoll();
+    };
+  } catch (_) {
+    hsFbConnected = false;
+  }
+}
+
+function disconnectHsFirebase() {
+  if (hsFbSource) {
+    try { hsFbSource.close(); } catch (_) {}
+    hsFbSource = null;
+  }
+  hsFbConnected = false;
+  hsFbReady = false;
 }
 
 function scheduleHsPoll() {
@@ -137,6 +173,7 @@ function scheduleHsPoll() {
 
 function startPolling() {
   stopPolling();
+  connectHsFirebase();
   fetchState().then(() => scheduleHsPoll());
 }
 
@@ -150,7 +187,9 @@ function stopPolling() {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     stopPolling();
+    disconnectHsFirebase();
   } else if (roomId && playerId) {
+    connectHsFirebase();
     fetchState().then(() => scheduleHsPoll());
   }
 });
@@ -196,6 +235,7 @@ async function sendAction(payload) {
 
 function leaveRoom() {
   stopPolling();
+  disconnectHsFirebase();
   sessionStorage.removeItem("hs_room");
   sessionStorage.removeItem("hs_pid");
   roomId = "";
@@ -881,6 +921,13 @@ async function checkLiveStatus() {
     };
     setBadge("st-server", h.ok ? "정상" : "오류", h.ok ? "ok" : "err");
     setBadge("st-gemini", h.gemini_ai ? "활성 (AI)" : "내장 폴백", h.gemini_ai ? "ok" : "warn");
+    if (h.firebase_rtdb && h.firebase_url) {
+      window.PD_FIREBASE_URL = h.firebase_url;
+      setBadge("st-firebase", "0.05초 실시간", "ok");
+    } else {
+      window.PD_FIREBASE_URL = "";
+      setBadge("st-firebase", "스마트 폴링", "warn");
+    }
 
     if (!h.redis) {
       setBadge("st-redis", "로컬 메모리", "warn");

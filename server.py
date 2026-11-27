@@ -128,6 +128,23 @@ class RoomStore:
 
 STORE = RoomStore()
 
+FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "").strip().strip('"').strip("'").rstrip("/")
+FIREBASE_DB_SECRET = os.environ.get("FIREBASE_DB_SECRET", "").strip().strip('"').strip("'")
+
+
+def notify_firebase_signal(sig_key: str):
+    """Push a tiny version timestamp to Firebase RTDB so connected clients sync in ~50ms."""
+    if not FIREBASE_DB_URL or not FIREBASE_DB_SECRET:
+        return
+    try:
+        url = f"{FIREBASE_DB_URL}/signals/{sig_key}.json?auth={FIREBASE_DB_SECRET}"
+        body = json.dumps({"ver": int(time.time() * 1000)}).encode("utf-8")
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="PUT")
+        with urllib.request.urlopen(req, timeout=1.2):
+            pass
+    except Exception:
+        pass
+
 
 def create_deck() -> List[int]:
     deck = (
@@ -829,6 +846,7 @@ async def favicon():
 @app.get("/api/health")
 async def health():
     redis_ok, redis_write_ok, redis_detail = STORE.ping()
+    fb_ok = bool(FIREBASE_DB_URL and FIREBASE_DB_SECRET)
     return {
         "ok": True,
         "redis": STORE.use_redis,
@@ -836,6 +854,8 @@ async def health():
         "redis_write_ok": redis_write_ok,
         "redis_detail": redis_detail,
         "gemini_ai": bool(os.environ.get("GEMINI_API_KEY", "").strip()),
+        "firebase_rtdb": fb_ok,
+        "firebase_url": FIREBASE_DB_URL if fb_ok else "",
     }
 
 
@@ -882,6 +902,7 @@ async def join_room(payload: dict):
         player_id = f"p_{random.randint(10000, 99999)}"
         room.players.append(Player(id=player_id, name=name, is_ai=False, chips=room.starting_chips))
         STORE.save_room(room)
+        notify_firebase_signal(f"hs_{room_id}")
         return JSONResponse({"room_id": room_id, "player_id": player_id})
     finally:
         STORE.release_lock(room_id)
@@ -901,6 +922,7 @@ async def get_room_state(room_id: str, player_id: str):
                 room = STORE.get_room(room_id) or room
                 if room.step_ai_if_due():
                     STORE.save_room(room)
+                    notify_firebase_signal(f"hs_{room_id}")
             finally:
                 STORE.release_lock(room_id)
 
@@ -951,6 +973,7 @@ async def post_action(room_id: str, payload: dict):
             return JSONResponse({"type": "state", "saved": True, "data": room.serialize_for(player_id)})
 
         STORE.save_room(room)
+        notify_firebase_signal(f"hs_{room_id}")
         return JSONResponse({"type": "state", "data": room.serialize_for(player_id)})
     finally:
         STORE.release_lock(room_id)
@@ -1091,6 +1114,7 @@ async def fl_join(payload: dict):
     room["players"].append({"id": pid, "name": name, "secret": "", "pending_guess": "", "guesses": []})
     room["phase"] = "SETUP"
     STORE.set_json(key, room)
+    notify_firebase_signal(f"fl_{room_id}")
     return JSONResponse({"room_id": room_id, "player_id": pid, "data": fl_serialize(room, pid)})
 
 
@@ -1125,6 +1149,7 @@ async def fl_set_secret(room_id: str, payload: dict):
     if len(room["players"]) == 2 and all(bool(p.get("secret")) for p in room["players"]):
         room["phase"] = "PLAYING"
     STORE.set_json(key, room)
+    notify_firebase_signal(f"fl_{room_id.upper()}")
     return JSONResponse({"data": fl_serialize(room, pid)})
 
 
@@ -1185,6 +1210,7 @@ async def fl_guess(room_id: str, payload: dict):
             room["winner_name"] = p1["name"]
 
     STORE.set_json(key, room)
+    notify_firebase_signal(f"fl_{room_id.upper()}")
     return JSONResponse({"data": fl_serialize(room, pid)})
 
 
@@ -1206,6 +1232,7 @@ async def fl_restart(room_id: str, payload: dict):
         p["secret"] = ""
         p["pending_guess"] = ""
     STORE.set_json(key, room)
+    notify_firebase_signal(f"fl_{room_id.upper()}")
     return JSONResponse({"data": fl_serialize(room, pid)})
 
 
@@ -1257,6 +1284,7 @@ async def mp_join(payload: dict):
     pid = f"mp_{random.randint(10000, 99999)}"
     room["players"].append({"id": pid, "name": name, "is_ai": False})
     STORE.set_json(key, room)
+    notify_firebase_signal(f"mp_{rid}")
     return JSONResponse({"room_id": rid, "player_id": pid, "data": mp_engine.serialize_mp_room(room, pid)})
 
 
@@ -1270,6 +1298,7 @@ async def mp_get(room_id: str, player_id: str):
         return JSONResponse({"error": "권한이 없습니다."}, status_code=403)
     if mp_engine.maybe_step_mp_ai(room):
         STORE.set_json(key, room)
+        notify_firebase_signal(f"mp_{room_id.upper()}")
     return JSONResponse({"data": mp_engine.serialize_mp_room(room, player_id)})
 
 
@@ -1287,6 +1316,7 @@ async def mp_action(room_id: str, payload: dict):
     if err:
         return JSONResponse({"error": err}, status_code=400)
     STORE.set_json(key, room)
+    notify_firebase_signal(f"mp_{room_id.upper()}")
     return JSONResponse({"data": mp_engine.serialize_mp_room(room, pid)})
 
 

@@ -8,6 +8,9 @@ let mpData = null;
 let mpPollTimer = null;
 let mpPollBusy = false;
 let mpLastSig = "";
+let mpFbSource = null;
+let mpFbReady = false;
+let mpFbConnected = false;
 
 // Local UI selection state per game
 let mpSel = {
@@ -25,11 +28,50 @@ const AI_TIER_LABELS = { easy: "🌱쉬움", normal: "⚖️보통", pro: "🔥�
 const AI_TIER_ORDER = ["easy", "normal", "pro", "devil"];
 
 function mpStopPoll() {
-  if (mpPollTimer) { clearInterval(mpPollTimer); mpPollTimer = null; }
+  if (mpPollTimer) { clearTimeout(mpPollTimer); mpPollTimer = null; }
+}
+
+function mpDisconnectFb() {
+  if (mpFbSource) {
+    try { mpFbSource.close(); } catch (_) {}
+    mpFbSource = null;
+  }
+  mpFbConnected = false;
+  mpFbReady = false;
+}
+
+function mpConnectFb() {
+  mpDisconnectFb();
+  if (!window.PD_FIREBASE_URL || !mpRoomId || document.hidden || (mpData && mpData.solo_mode)) return;
+  try {
+    mpFbReady = false;
+    mpFbSource = new EventSource(`${window.PD_FIREBASE_URL}/signals/mp_${mpRoomId.toUpperCase()}.json`);
+    const onSig = () => {
+      mpFbConnected = true;
+      if (!mpFbReady) { mpFbReady = true; mpSchedulePoll(); return; }
+      if (!mpPollBusy) {
+        mpPollBusy = true;
+        fetch(`/api/mp/${mpRoomId}?player_id=${encodeURIComponent(mpPlayerId)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((out) => { if (out && out.data) mpApply(out.data, false); })
+          .catch(() => {})
+          .finally(() => { mpPollBusy = false; });
+      }
+    };
+    mpFbSource.addEventListener("put", onSig);
+    mpFbSource.addEventListener("patch", onSig);
+    mpFbSource.onerror = () => {
+      mpFbConnected = false;
+      mpSchedulePoll();
+    };
+  } catch (_) {
+    mpFbConnected = false;
+  }
 }
 
 function mpExitToHub() {
   mpStopPoll();
+  mpDisconnectFb();
   sessionStorage.removeItem("mp_in_game");
   showScreen("hub");
 }
@@ -164,6 +206,7 @@ function mpGetPollInterval() {
   if (!mpData) return 700;
   if (mpData.ai_pending) return 600;
   if (mpData.solo_mode) return null; // 1인 AI 대전: 내 차례/종료 시 폴링 완전 정지 (0 req/s)
+  if (mpFbConnected) return 15000; // Firebase SSE 연결 중: 15초 백업 폴링
   if (mpData.phase === "LOBBY" || mpData.phase === "DONE") return 2500;
   const me = (mpData.players || []).find((p) => p.id === mpData.viewer_id);
   if (me) {
@@ -197,13 +240,16 @@ function mpSchedulePoll() {
 }
 
 function mpStartPoll() {
+  mpConnectFb();
   mpSchedulePoll();
 }
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     mpStopPoll();
+    mpDisconnectFb();
   } else if (mpRoomId && mpPlayerId) {
+    mpConnectFb();
     // 복귀 시 즉시 1회 동기화 후 적응형 폴링 재개
     if (!mpPollBusy) {
       mpPollBusy = true;
