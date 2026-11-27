@@ -717,33 +717,110 @@ function renderMpFormulaTower(d, me, board, ctrl, isHost) {
     </div>`;
 }
 
-// --- 11. 그라데이션 (Gradation) ---
+// --- 11. 그라데이션 (Original Day 6: 7 Symmetric Monochrome Cups ⬛▪️▫️⬜▫️▪️⬛) ---
+let grDraft = [0, 1, 3, 5, 6, 7, 8];
+const GR_COLORS_UI = ["black", "darkgray", "ivory", "white", "ivory", "darkgray", "black"];
+const GR_KR_UI = { black: "⬛검정", darkgray: "▪️진회색", ivory: "▫️상아색", white: "⬜흰색" };
+
+function grAdjDraft(idx, delta) {
+  grDraft[idx] = Math.max(0, Math.min(9, grDraft[idx] + delta));
+  renderMp();
+}
+
+function grRandDraft() {
+  const presets = [
+    [0, 1, 3, 5, 6, 7, 8],
+    [0, 2, 3, 4, 5, 7, 9],
+    [1, 1, 3, 4, 6, 7, 8],
+    [0, 2, 2, 4, 6, 8, 8],
+    [0, 1, 2, 5, 6, 7, 9],
+  ];
+  grDraft = [...presets[Math.floor(Math.random() * presets.length)]];
+  if (typeof SFX !== "undefined") SFX.dice();
+  renderMp();
+}
+
 function renderMpGradation(d, me, board, ctrl, isHost) {
-  $("mp-hud-round").textContent = `R${d.round}`;
-  $("mp-hud-mid").textContent = `덱 ${(d.state.deck || []).length}장`;
-  $("mp-hud-right").textContent = `내 패 ${me.hand_count}장`;
-  const line = d.state.line || [];
-  const hueFor = (v) => `hsl(${Math.round((v / 30) * 320)}, 72%, 44%)`;
-  let lineHtml = "";
-  for (let s = 0; s <= line.length; s++) {
-    if (me.is_turn && mpSel.grCard !== null) {
-      lineHtml += `<button type="button" class="gr-slot-btn" onclick="mpSend({action:'place',card:${mpSel.grCard},slot:${s}});mpSel.grCard=null;">+</button>`;
+  const st = d.state;
+  const opp = d.players.find((p) => p.id !== d.viewer_id);
+  $("mp-hud-round").textContent = st.sub_phase === "SETUP" ? "배치 단계" : `R${d.round} / 7`;
+  $("mp-hud-mid").textContent = `${me.name} ${me.score} : ${opp ? opp.score : 0} ${opp ? opp.name : ""}`;
+  $("mp-hud-right").textContent = me.is_lead ? "⭐ 선공" : "후공";
+
+  if (st.sub_phase === "SETUP") {
+    const sum = grDraft.reduce((a, b) => a + b, 0);
+    const ascOk = grDraft.every((v, i) => i === 0 || grDraft[i - 1] <= v);
+    const dupOk = grDraft.every((v) => grDraft.filter((x) => x === v).length <= 2);
+    const valid = sum <= 30 && ascOk && dupOk;
+
+    board.innerHTML = `
+      <div class="d1-score-grid">
+        ${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name}</span><strong>${p.setup_done ? "✅ 배치완료" : "⏳ 배치 중"}</strong></div>`).join("")}
+      </div>
+      <div style="text-align:center;font-size:11.5px;color:#ccc;">
+        총합 <strong style="color:${sum <= 30 ? "#5ee695" : "#ff6b6b"}">${sum}/30</strong> ·
+        오름차순 <strong style="color:${ascOk ? "#5ee695" : "#ff6b6b"}">${ascOk ? "OK" : "불가"}</strong> ·
+        중복≤2 <strong style="color:${dupOk ? "#5ee695" : "#ff6b6b"}">${dupOk ? "OK" : "초과"}</strong>
+      </div>
+      <div class="gr7-row">
+        ${grDraft.map((v, i) => `
+          <div class="gr7-cup ${GR_COLORS_UI[i]}">
+            <span class="val">${v}</span>
+            ${!me.setup_done ? `<div class="step-btns"><button type="button" onclick="grAdjDraft(${i},-1)">-</button><button type="button" onclick="grAdjDraft(${i},1)">+</button></div>` : ""}
+          </div>
+        `).join("")}
+      </div>`;
+
+    if (me.setup_done) {
+      ctrl.innerHTML = `<div class="wait-pill">⏳ 배치 완료! 상대방이 7개 통 배치를 마칠 때까지 대기 중...</div>`;
+    } else {
+      ctrl.innerHTML = `
+        <div class="action-row cols-2">
+          <button type="button" class="btn btn-outline" style="padding:10px;" onclick="grRandDraft()">🎲 추천 배치</button>
+          <button type="button" class="btn btn-gold" style="padding:10px;" ${!valid ? "disabled" : ""} onclick="mpSend({action:'setup',vals:grDraft})">✅ 배치 확정</button>
+        </div>`;
     }
-    if (s < line.length) {
-      lineHtml += `<div class="gr-card-chip" style="background:${hueFor(line[s])};">${line[s]}</div>`;
-    }
-  }
-  board.innerHTML = `
-    <div class="gr-line">${lineHtml}</div>
-    <div class="d1-score-grid">${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name}${p.is_turn ? " ⚡" : ""}</span><strong>${p.hand_count}장 남음</strong></div>`).join("")}</div>`;
-  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
-  if (!me.is_turn) {
-    ctrl.innerHTML = `<div class="wait-pill">⏳ 다른 플레이어 차례입니다...</div>`;
     return;
   }
+
+  // PLAYING or DONE
+  const histHtml = (st.history || []).slice(-3).map((h) => `
+    <div class="d1-pcell" style="font-size:11px;">
+      <span>R${h.round}: ${GR_KR_UI[h.p0_color]}(${h.p0_val}) vs ${GR_KR_UI[h.p1_color]}(${h.p1_val})</span>
+      <strong>${h.result}</strong>
+    </div>
+  `).join("");
+
+  const leadBanner = st.lead_cup_color && st.sub_phase === "FOLLOW_PICK"
+    ? `<div class="gr7-cup ${st.lead_cup_color} gr7-lead-badge">선공 제출 통 색상: ${GR_KR_UI[st.lead_cup_color]} (숫자 비공개!)</div>`
+    : "";
+
+  board.innerHTML = `
+    <div style="font-size:11px;color:#aaa;text-align:center;">상대방(${opp ? opp.name : ""}) 남은 통 (공개된 통만 숫자 표시)</div>
+    <div class="gr7-row">
+      ${(opp && opp.cups ? opp.cups : []).map((c) => `
+        <div class="gr7-cup ${c.color} ${c.used ? "used" : ""}" style="cursor:default;">
+          <span class="val">${c.val !== null ? c.val : "?"}</span>
+        </div>
+      `).join("")}
+    </div>
+    ${leadBanner}
+    <div style="display:flex;flex-direction:column;gap:4px;">${histHtml}</div>`;
+
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+
+  const canPick = me.is_turn;
   ctrl.innerHTML = `
-    <div class="h13-row">${(me.hand || []).map((v) => `<button type="button" class="h13-btn ${mpSel.grCard === v ? "selected" : ""}" style="border-color:${hueFor(v)};" onclick="mpSel.grCard=${v};renderMp()">${v}</button>`).join("")}</div>
-    <button type="button" class="btn btn-dark" style="padding:8px;font-size:12.5px;" onclick="mpSend({action:'draw'});mpSel.grCard=null;">🃏 놓을 곳 없음 · +1장 드로우</button>`;
+    <div style="font-size:11px;color:var(--gold-bright);text-align:center;font-weight:800;">
+      ${canPick ? "👇 낼 통 1개를 터치하세요! (상대에겐 통 색상만 보입니다)" : "⏳ 상대방이 통을 고르는 중..."}
+    </div>
+    <div class="gr7-row">
+      ${(me.cups || []).map((c) => `
+        <button type="button" class="gr7-cup ${c.color} ${c.used ? "used" : ""}" ${!canPick || c.used ? "disabled" : ""} onclick="mpSend({action:'pick',cup_idx:${c.idx}})">
+          <span class="val">${c.val}</span>
+        </button>
+      `).join("")}
+    </div>`;
 }
 
 // --- 12. 카드 장기 (Card Janggi 4x4) ---

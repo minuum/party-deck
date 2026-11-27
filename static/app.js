@@ -1093,7 +1093,7 @@ const GAME_CATALOG = [
   { id: "piggy_bank", name: "돼지 저금통", cat: "prison", catLabel: "감옥매치", day: "3일차", progress: 100, playable: true, desc: "3일차 감옥매치 · 5개 저금통 속 흑/백 동전 개수를 암기하고 의심으로 5점을 선취하는 심리전" },
   { id: "wall_go_2", name: "벽바둑 2", cat: "prison", catLabel: "감옥매치", day: "4일차", progress: 100, playable: true, desc: "4일차 감옥매치 · 5×5 보드에서 말을 이동하고 벽을 세워 최대 영토를 차지하는 보드 전략전" },
   { id: "formula_tower", name: "수식의 탑", cat: "prison", catLabel: "감옥매치", day: "5일차", progress: 100, playable: true, desc: "5일차 감옥매치 · 4개 숫자 카드로 목표값에 가장 가까운 수식을 만들어 5층 탑을 쌓는 수리 대결" },
-  { id: "gradation", name: "그라데이션", cat: "prison", catLabel: "감옥매치", day: "6일차", progress: 100, playable: true, desc: "6일차 감옥매치 · 1~30 숫자 카드를 오름차순 그라데이션 슬롯에 끼워 먼저 손패를 비우는 추리전" },
+  { id: "gradation", name: "그라데이션", cat: "prison", catLabel: "감옥매치", day: "6일차", progress: 100, playable: true, desc: "6일차 감옥매치 · 검정-진회색-상아색-흰색 대칭 7개 통에 숫자(합≤30)를 오름차순 배치하는 1:1 블러핑 심리전" },
 
   { id: "card_janggi", name: "카드 장기", cat: "final", catLabel: "결승전", day: "1회전", progress: 100, playable: true, desc: "결승 1회전 · 4×4 전술 장기판에서 왕·차·마·졸을 지휘해 상대 왕(👑)을 포획하는 1:1 대결" },
   { id: "color_link", name: "컬러 링크", cat: "final", catLabel: "결승전", day: "2회전", progress: 100, playable: true, desc: "결승 2회전 · 5×5 보드에 내 색상을 배치해 6칸 최장 체인을 먼저 연결하는 전략 보드전" },
@@ -1161,8 +1161,8 @@ const GAME_VISUALS = {
     svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#fab005" stroke-width="1.8"><rect x="4" y="16" width="16" height="4" rx="1"/><rect x="6" y="11" width="12" height="4" rx="1"/><rect x="8" y="6" width="8" height="4" rx="1"/><path d="M12 2v4" stroke="#5ee695" stroke-width="2"/></svg>`,
   },
   gradation: {
-    accent: "#ff8787",
-    svg: `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="4" height="14" rx="1.5" fill="#4dabf7"/><rect x="8" y="5" width="4" height="14" rx="1.5" fill="#b197fc"/><rect x="13" y="5" width="4" height="14" rx="1.5" fill="#f783ac"/><rect x="18" y="5" width="3" height="14" rx="1.5" fill="#ff922b"/></svg>`,
+    accent: "#dcd6c8",
+    svg: `<svg viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="2.6" height="14" rx="1" fill="#181a20" stroke="#666" stroke-width="0.6"/><rect x="5.2" y="5" width="2.6" height="14" rx="1" fill="#4f5460"/><rect x="8.4" y="5" width="2.6" height="14" rx="1" fill="#cfc9bc"/><rect x="11.6" y="5" width="2.6" height="14" rx="1" fill="#ffffff"/><rect x="14.8" y="5" width="2.6" height="14" rx="1" fill="#cfc9bc"/><rect x="18" y="5" width="2.6" height="14" rx="1" fill="#4f5460"/><rect x="21.2" y="5" width="1.8" height="14" rx="1" fill="#181a20" stroke="#666" stroke-width="0.6"/></svg>`,
   },
   card_janggi: {
     accent: "#fcc419",

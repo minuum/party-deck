@@ -21,7 +21,7 @@ GAME_META = {
     "wall_go_2": {"title": "벽바둑 2", "day": "4일차 감옥매치", "max_players": 4, "min_players": 2},
     "hidden_word": {"title": "히든 워드", "day": "5일차 메인매치", "max_players": 6, "min_players": 2},
     "formula_tower": {"title": "수식의 탑", "day": "5일차 감옥매치", "max_players": 5, "min_players": 2},
-    "gradation": {"title": "그라데이션", "day": "6일차 감옥매치", "max_players": 5, "min_players": 2},
+    "gradation": {"title": "그라데이션", "day": "6일차 감옥매치", "max_players": 2, "min_players": 2},
     "card_janggi": {"title": "카드 장기", "day": "결승 1회전", "max_players": 2, "min_players": 2},
     "color_link": {"title": "컬러 링크", "day": "결승 2회전", "max_players": 4, "min_players": 2},
     "secret_code": {"title": "비밀 코드", "day": "유배지 03", "max_players": 6, "min_players": 2},
@@ -425,14 +425,21 @@ def start_mp_game(room: dict):
         room["log"] = "매 라운드 목표에 가장 가까운 플레이어가 탑 +1층! 먼저 5층 달성 시 우승!"
 
     elif gt == "gradation":
-        deck = list(range(1, 31))
-        random.shuffle(deck)
+        # 1:1 Symmetric 7-container gradation: black, darkgray, ivory, white, ivory, darkgray, black
+        colors = ["black", "darkgray", "ivory", "white", "ivory", "darkgray", "black"]
         for p in ps:
-            p["hand"] = sorted([deck.pop() for _ in range(5)])
-        line = [deck.pop()]
-        room["state"] = {"deck": deck, "line": line, "turn_idx": 0}
-        room["banner"] = f"🌈 그라데이션 시작! 기준선 {line}에 오름차순으로 카드를 끼워 넣으세요!"
-        room["log"] = "손패를 가장 먼저 0장으로 만드는 플레이어가 우승! 못 넣으면 카드 +1장 드로우!"
+            p["score"] = 0
+            p["setup_done"] = False
+            p["cups"] = []  # list of {idx, color, val, used}
+        room["state"] = {
+            "sub_phase": "SETUP",  # SETUP, LEAD_PICK, FOLLOW_PICK
+            "colors": colors,
+            "lead_idx": random.randint(0, 1),
+            "lead_cup_idx": None,
+            "history": [],  # [{round, p0_color, p0_val, p1_color, p1_val, winner}]
+        }
+        room["banner"] = "⬛▪️▫️⬜▫️▪️⬛ 배치 단계! 7개 그라데이션 통에 숫자를 오름차순(총합≤30, 중복 최대2)으로 숨기세요!"
+        room["log"] = "상대에게는 내가 낸 통의 '색상'만 보입니다! 검정 통이 0일지 9일지 심리전을 펼치세요!"
         _gr_advance_ai(room)
 
     elif gt == "card_janggi":
@@ -1334,78 +1341,180 @@ def _act_formula_tower(room: dict, me: dict, payload: dict):
     return None
 
 
-# --- 11. 그라데이션 (Gradation - 6일차 감옥매치) ---
-def _gr_can_place(line: List[int], val: int, slot: int) -> bool:
-    left_ok = (slot == 0) or (line[slot - 1] < val)
-    right_ok = (slot == len(line)) or (val < line[slot])
-    return left_ok and right_ok
+# --- 11. 그라데이션 (Original Day 6 Prison Match: 7 Symmetric Gradation Cups, 1:1) ---
+GR_COLORS = ["black", "darkgray", "ivory", "white", "ivory", "darkgray", "black"]
+GR_COLOR_KR = {"black": "⬛검정", "darkgray": "▪️진회색", "ivory": "▫️상아색", "white": "⬜흰색"}
+
+
+def _gr_random_valid_vals() -> List[int]:
+    presets = [
+        [0, 1, 3, 5, 6, 7, 8],
+        [0, 2, 3, 4, 5, 7, 9],
+        [1, 1, 3, 4, 6, 7, 8],
+        [0, 2, 2, 4, 6, 8, 8],
+        [0, 1, 2, 5, 6, 7, 9],
+        [1, 2, 3, 4, 5, 6, 9],
+    ]
+    return list(random.choice(presets))
+
+
+def _gr_validate_vals(vals: List[int]) -> Optional[str]:
+    if len(vals) != 7:
+        return "7개의 숫자를 모두 배치해야 합니다."
+    if any(not isinstance(v, int) or v < 0 or v > 9 for v in vals):
+        return "숫자는 0~9 사이여야 합니다."
+    for i in range(6):
+        if vals[i] > vals[i + 1]:
+            return "왼쪽에서 오른쪽으로 오름차순(작아지지 않게)이어야 합니다!"
+    for d in range(10):
+        if vals.count(d) > 2:
+            return f"숫자 {d}는 최대 2개까지만 사용할 수 있습니다!"
+    if sum(vals) > 30:
+        return f"7개 숫자의 총합({sum(vals)})은 30 이하여야 합니다!"
+    return None
 
 
 def _gr_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
+    if room["phase"] != "PLAYING":
+        return
+
+    # AI Setup
+    if st["sub_phase"] == "SETUP":
+        for p in ps:
+            if p["is_ai"] and not p["setup_done"]:
+                vals = _gr_random_valid_vals()
+                p["cups"] = [{"idx": i, "color": GR_COLORS[i], "val": vals[i], "used": False} for i in range(7)]
+                p["setup_done"] = True
+        if all(p["setup_done"] for p in ps):
+            st["sub_phase"] = "LEAD_PICK"
+            room["banner"] = f"⚔️ 배치 완료! R1 선공 [{ps[st['lead_idx']]['name']}]님이 낼 통 1개를 선택하세요!"
+
     guard = 0
-    while room["phase"] == "PLAYING" and guard < 10:
+    while room["phase"] == "PLAYING" and guard < 6:
         guard += 1
-        curr = ps[st["turn_idx"]]
-        if not curr["is_ai"]:
+        lead_i = st["lead_idx"]
+        follow_i = 1 - lead_i
+        if st["sub_phase"] == "LEAD_PICK":
+            actor = ps[lead_i]
+            if not actor["is_ai"]:
+                return
+            avail = [c for c in actor["cups"] if not c["used"]]
+            if not avail:
+                return
+            pick = random.choice(avail)
+            st["lead_cup_idx"] = pick["idx"]
+            st["sub_phase"] = "FOLLOW_PICK"
+            room["banner"] = f"🤖 선공 {actor['name']}이(가) [{GR_COLOR_KR[pick['color']]}] 통을 냈습니다! 대응할 통을 고르세요!"
+        elif st["sub_phase"] == "FOLLOW_PICK":
+            actor = ps[follow_i]
+            if not actor["is_ai"]:
+                return
+            avail = [c for c in actor["cups"] if not c["used"]]
+            if not avail:
+                return
+            lvl = actor.get("ai_level", "normal")
+            lead_cup = ps[lead_i]["cups"][st["lead_cup_idx"]]
+            # Devil/Pro estimates based on color & plays strategically
+            if lvl in ("pro", "devil"):
+                pick = max(avail, key=lambda c: c["val"]) if lead_cup["color"] in ("black", "darkgray") and random.random() < 0.6 else random.choice(avail)
+            else:
+                pick = random.choice(avail)
+            _gr_resolve_round(room, pick["idx"])
+        else:
             return
-        lvl = curr.get("ai_level", "normal")
-        placed = False
-        # Pro/Devil picks card closest to existing line numbers to narrow gaps
-        hand_order = sorted(curr["hand"], key=lambda v: min(abs(v - x) for x in st["line"])) if lvl in ("pro", "devil") else list(curr["hand"])
-        for val in hand_order:
-            for slot in range(len(st["line"]) + 1):
-                if _gr_can_place(st["line"], val, slot):
-                    curr["hand"].remove(val)
-                    st["line"].insert(slot, val)
-                    placed = True
-                    room["log"] = f"🤖 {curr['name']} [{val}] 배치 성공!"
-                    break
-            if placed:
-                break
-        if not placed and st["deck"]:
-            curr["hand"].append(st["deck"].pop())
-            curr["hand"].sort()
-            room["log"] = f"🤖 {curr['name']} 배치 불가 → +1장 드로우"
-        if len(curr["hand"]) == 0:
-            room["phase"] = "DONE"
-            room["banner"] = f"🏆 그라데이션 우승: {curr['name']} (손패 0장 달성!)"
-            return
-        st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
-        room["banner"] = f"🌈 {ps[st['turn_idx']]['name']}님 차례! 카드를 오름차순 슬롯에 끼워 넣으세요."
+
+
+def _gr_resolve_round(room: dict, follow_cup_idx: int):
+    st = room["state"]
+    ps = room["players"]
+    lead_i = st["lead_idx"]
+    follow_i = 1 - lead_i
+    c_lead = ps[lead_i]["cups"][st["lead_cup_idx"]]
+    c_follow = ps[follow_i]["cups"][follow_cup_idx]
+    c_lead["used"] = True
+    c_follow["used"] = True
+
+    c0 = c_lead if lead_i == 0 else c_follow
+    c1 = c_follow if lead_i == 0 else c_lead
+
+    if c_lead["val"] > c_follow["val"]:
+        ps[lead_i]["score"] += 1
+        win_txt = f"{ps[lead_i]['name']} 승!"
+        next_lead = lead_i
+    elif c_follow["val"] > c_lead["val"]:
+        ps[follow_i]["score"] += 1
+        win_txt = f"{ps[follow_i]['name']} 승!"
+        next_lead = follow_i
+    else:
+        win_txt = "무승부"
+        next_lead = lead_i
+
+    st["history"].append({
+        "round": room["round"],
+        "p0_color": c0["color"], "p0_val": c0["val"],
+        "p1_color": c1["color"], "p1_val": c1["val"],
+        "result": win_txt,
+    })
+    room["log"] = f"R{room['round']} 공개: {ps[0]['name']}({GR_COLOR_KR[c0['color']]} {c0['val']}) vs {ps[1]['name']}({GR_COLOR_KR[c1['color']]} {c1['val']}) → {win_txt}"
+
+    st["lead_cup_idx"] = None
+    st["lead_idx"] = next_lead
+
+    if room["round"] >= 7:
+        room["phase"] = "DONE"
+        if ps[0]["score"] > ps[1]["score"]:
+            room["banner"] = f"🏆 그라데이션 우승: {ps[0]['name']} ({ps[0]['score']} : {ps[1]['score']})"
+        elif ps[1]["score"] > ps[0]["score"]:
+            room["banner"] = f"🏆 그라데이션 우승: {ps[1]['name']} ({ps[1]['score']} : {ps[0]['score']})"
+        else:
+            room["banner"] = f"🤝 7라운드 최종 무승부! ({ps[0]['score']} : {ps[1]['score']})"
+    else:
+        room["round"] += 1
+        st["sub_phase"] = "LEAD_PICK"
+        room["banner"] = f"R{room['round']} 선공: {ps[next_lead]['name']}님! 낼 통 1개를 선택하세요."
 
 
 def _act_gradation(room: dict, me: dict, payload: dict):
     st = room["state"]
     ps = room["players"]
-    if ps[st["turn_idx"]]["id"] != me["id"]:
-        return "내 차례가 아닙니다."
-    act = payload.get("action", "place")
-    if act == "draw":
-        if st["deck"]:
-            me["hand"].append(st["deck"].pop())
-            me["hand"].sort()
-        room["log"] = f"🃏 {me['name']} 드로우 선택 (+1장)"
-    else:
-        val = int(payload.get("card", -1))
-        slot = int(payload.get("slot", -1))
-        if val not in me["hand"]:
-            return "보유한 카드가 아닙니다."
-        if not (0 <= slot <= len(st["line"])) or not _gr_can_place(st["line"], val, slot):
-            return "오름차순 위치가 맞지 않습니다!"
-        me["hand"].remove(val)
-        st["line"].insert(slot, val)
-        room["log"] = f"🌈 {me['name']} [{val}] 배치 완료!"
-        if len(me["hand"]) == 0:
-            room["phase"] = "DONE"
-            room["banner"] = f"🏆 그라데이션 우승: {me['name']} (손패 모두 소진!)"
-            return None
-    room["round"] += 1
-    st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
-    room["banner"] = f"🌈 다음 차례: {ps[st['turn_idx']]['name']}"
-    _gr_advance_ai(room)
-    return None
+    my_idx = next(i for i, p in enumerate(ps) if p["id"] == me["id"])
+    act = payload.get("action", "")
+
+    if st["sub_phase"] == "SETUP" and act == "setup":
+        vals = [int(v) for v in payload.get("vals", [])]
+        err = _gr_validate_vals(vals)
+        if err:
+            return err
+        me["cups"] = [{"idx": i, "color": GR_COLORS[i], "val": vals[i], "used": False} for i in range(7)]
+        me["setup_done"] = True
+        _gr_advance_ai(room)
+        return None
+
+    if st["sub_phase"] == "LEAD_PICK" and act == "pick":
+        if my_idx != st["lead_idx"]:
+            return "선공 플레이어 차례입니다."
+        cidx = int(payload.get("cup_idx", -1))
+        if not (0 <= cidx < 7) or me["cups"][cidx]["used"]:
+            return "이미 사용한 통입니다."
+        st["lead_cup_idx"] = cidx
+        st["sub_phase"] = "FOLLOW_PICK"
+        col = me["cups"][cidx]["color"]
+        room["banner"] = f"선공 {me['name']}님이 [{GR_COLOR_KR[col]}] 통을 냈습니다! 후공 {ps[1-my_idx]['name']}님 선택 차례!"
+        _gr_advance_ai(room)
+        return None
+
+    if st["sub_phase"] == "FOLLOW_PICK" and act == "pick":
+        if my_idx != (1 - st["lead_idx"]):
+            return "후공 플레이어 차례입니다."
+        cidx = int(payload.get("cup_idx", -1))
+        if not (0 <= cidx < 7) or me["cups"][cidx]["used"]:
+            return "이미 사용한 통입니다."
+        _gr_resolve_round(room, cidx)
+        _gr_advance_ai(room)
+        return None
+    return "현재 수행할 수 없는 행동입니다."
 
 
 # --- 12. 카드 장기 (Card Janggi - 결승 1회전) ---
@@ -1676,10 +1785,26 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
                 "submitted": p.get("pending") is not None,
             })
         elif gt == "gradation":
+            is_lead = idx == st.get("lead_idx", 0)
+            my_turn = (
+                (st.get("sub_phase") == "SETUP" and not p.get("setup_done"))
+                or (st.get("sub_phase") == "LEAD_PICK" and is_lead)
+                or (st.get("sub_phase") == "FOLLOW_PICK" and not is_lead)
+            ) and room["phase"] == "PLAYING"
             po.update({
-                "hand_count": len(p.get("hand", [])),
-                "hand": p.get("hand", []) if (is_me or done) else [],
-                "is_turn": idx == st.get("turn_idx", 0) and room["phase"] == "PLAYING",
+                "score": p.get("score", 0),
+                "setup_done": p.get("setup_done", False),
+                "is_lead": is_lead,
+                "is_turn": my_turn,
+                "cups": [
+                    {
+                        "idx": c["idx"],
+                        "color": c["color"],
+                        "used": c["used"],
+                        "val": c["val"] if (is_me or c["used"] or done) else None,
+                    }
+                    for c in p.get("cups", [])
+                ],
             })
         elif gt == "card_janggi":
             po.update({"is_turn": idx == st.get("turn_idx", 0) and room["phase"] == "PLAYING"})
@@ -1699,6 +1824,12 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
     state_out = dict(st)
     if gt == "secret_code" and not done:
         state_out["secret"] = None
+    elif gt == "gradation" and st.get("lead_cup_idx") is not None:
+        li = st.get("lead_idx", 0)
+        l_cups = ps[li].get("cups", [])
+        if st["lead_cup_idx"] < len(l_cups):
+            state_out["lead_cup_color"] = l_cups[st["lead_cup_idx"]]["color"]
+        state_out["lead_cup_idx"] = None  # Hide exact position from opponent!
     if gt == "hidden_word":
         setter_id = ps[st.get("setter_idx", 0)]["id"] if ps else ""
         if viewer_id != setter_id and not done:
