@@ -1093,15 +1093,15 @@ const GAME_CATALOG = [
   { id: "piggy_bank", name: "돼지 저금통", cat: "prison", catLabel: "감옥매치", day: "3일차", progress: 100, playable: true, desc: "3일차 감옥매치 · 5개 저금통 속 흑/백 동전 개수를 암기하고 의심으로 5점을 선취하는 심리전" },
   { id: "wall_go_2", name: "벽바둑 2", cat: "prison", catLabel: "감옥매치", day: "4일차", progress: 100, playable: true, desc: "4일차 감옥매치 · 5×5 보드에서 말을 이동하고 벽을 세워 최대 영토를 차지하는 보드 전략전" },
   { id: "formula_tower", name: "수식의 탑", cat: "prison", catLabel: "감옥매치", day: "5일차", progress: 100, playable: true, desc: "5일차 감옥매치 · 4개 숫자 카드로 목표값에 가장 가까운 수식을 만들어 5층 탑을 쌓는 수리 대결" },
-  { id: "gradation", name: "그라데이션", cat: "prison", catLabel: "감옥매치", day: "6일차", progress: 0, playable: false, desc: "6일차 감옥매치 · 순서와 색/수치 배열 추리전" },
+  { id: "gradation", name: "그라데이션", cat: "prison", catLabel: "감옥매치", day: "6일차", progress: 100, playable: true, desc: "6일차 감옥매치 · 1~30 숫자 카드를 오름차순 그라데이션 슬롯에 끼워 먼저 손패를 비우는 추리전" },
 
-  { id: "card_janggi", name: "카드 장기", cat: "final", catLabel: "결승전", day: "1회전", progress: 0, playable: false, desc: "결승 1회전 · 카드 기반 1:1 장기 변형 전략전" },
-  { id: "color_link", name: "컬러 링크", cat: "final", catLabel: "결승전", day: "2회전", progress: 0, playable: false, desc: "결승 2회전 · 색상을 연결하는 퍼즐 보드 대결" },
+  { id: "card_janggi", name: "카드 장기", cat: "final", catLabel: "결승전", day: "1회전", progress: 100, playable: true, desc: "결승 1회전 · 4×4 전술 장기판에서 왕·차·마·졸을 지휘해 상대 왕(👑)을 포획하는 1:1 대결" },
+  { id: "color_link", name: "컬러 링크", cat: "final", catLabel: "결승전", day: "2회전", progress: 100, playable: true, desc: "결승 2회전 · 5×5 보드에 내 색상을 배치해 6칸 최장 체인을 먼저 연결하는 전략 보드전" },
   { id: "formula_light", name: "수식 신호등", cat: "final", catLabel: "결승전", day: "3회전", progress: 100, playable: true, desc: "결승 3회전 · 9칸 등식(^ 제곱 포함)을 🟩🟨🟥 신호등 힌트로 먼저 맞히는 최종 추리전 (1:1 AI 대결 & 솔로)" },
 
   { id: "piece_puzzle", name: "피스 퍼즐", cat: "exile", catLabel: "유배지", day: "매치 01", progress: 0, playable: false, desc: "유배지 매치 01 · 도형 조각 맞추기 퍼즐" },
   { id: "spot_diff", name: "달라진 그림 찾기", cat: "exile", catLabel: "유배지", day: "매치 02", progress: 0, playable: false, desc: "유배지 매치 02 · 기억력과 관찰력 대결" },
-  { id: "secret_code", name: "비밀 코드", cat: "exile", catLabel: "유배지", day: "매치 03", progress: 0, playable: false, desc: "유배지 매치 03 · 코드 추리 및 해독 게임" },
+  { id: "secret_code", name: "비밀 코드", cat: "exile", catLabel: "유배지", day: "매치 03", progress: 100, playable: true, desc: "유배지 매치 03 · 4자리 중복 없는 숫자 코드를 스트라이크/볼 판정으로 최속 해독하는 레이스" },
   { id: "fence_build", name: "울타리 치기", cat: "exile", catLabel: "유배지", day: "매치 04", progress: 0, playable: false, desc: "유배지 매치 04 · 선을 이어 영역을 가두는 보드 게임" },
   { id: "symmetry_puzzle", name: "대칭 퍼즐", cat: "exile", catLabel: "유배지", day: "매치 05", progress: 0, playable: false, desc: "유배지 매치 05 · 대칭 구조를 완성하는 공간 지각 퍼즐" },
   { id: "world_flags", name: "만국기", cat: "exile", catLabel: "유배지", day: "매치 06", progress: 0, playable: false, desc: "유배지 매치 06 · 깃발 패턴 기억 및 배열 대결" },
@@ -1159,6 +1159,22 @@ const GAME_VISUALS = {
   formula_tower: {
     accent: "#fab005",
     svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#fab005" stroke-width="1.8"><rect x="4" y="16" width="16" height="4" rx="1"/><rect x="6" y="11" width="12" height="4" rx="1"/><rect x="8" y="6" width="8" height="4" rx="1"/><path d="M12 2v4" stroke="#5ee695" stroke-width="2"/></svg>`,
+  },
+  gradation: {
+    accent: "#ff8787",
+    svg: `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="4" height="14" rx="1.5" fill="#4dabf7"/><rect x="8" y="5" width="4" height="14" rx="1.5" fill="#b197fc"/><rect x="13" y="5" width="4" height="14" rx="1.5" fill="#f783ac"/><rect x="18" y="5" width="3" height="14" rx="1.5" fill="#ff922b"/></svg>`,
+  },
+  card_janggi: {
+    accent: "#fcc419",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#fcc419" stroke-width="1.8"><path d="M5 17h14l1-9-4 3-4-5-4 5-4-3 1 9z"/><path d="M5 20h14" stroke="#ff6b6b" stroke-width="2"/></svg>`,
+  },
+  color_link: {
+    accent: "#38d9a9",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#38d9a9" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3" stroke="#f783ac"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v6M9 18h6"/></svg>`,
+  },
+  secret_code: {
+    accent: "#51cf66",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#51cf66" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.5" fill="#51cf66"/></svg>`,
   },
 };
 

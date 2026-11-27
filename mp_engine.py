@@ -8,6 +8,8 @@ from typing import Dict, List, Optional, Tuple
 
 BOT_NAMES = ["VIPER", "NOVA", "KRONOS", "ORION", "ZEPHYR", "ATLAS"]
 
+AI_TIERS = ("easy", "normal", "pro", "devil")
+
 GAME_META = {
     "choice": {"title": "양자택일", "day": "1일차 메인매치", "max_players": 7, "min_players": 2},
     "heavy_13": {"title": "무거운 13", "day": "1일차 감옥매치", "max_players": 5, "min_players": 2},
@@ -19,6 +21,10 @@ GAME_META = {
     "wall_go_2": {"title": "벽바둑 2", "day": "4일차 감옥매치", "max_players": 4, "min_players": 2},
     "hidden_word": {"title": "히든 워드", "day": "5일차 메인매치", "max_players": 6, "min_players": 2},
     "formula_tower": {"title": "수식의 탑", "day": "5일차 감옥매치", "max_players": 5, "min_players": 2},
+    "gradation": {"title": "그라데이션", "day": "6일차 감옥매치", "max_players": 5, "min_players": 2},
+    "card_janggi": {"title": "카드 장기", "day": "결승 1회전", "max_players": 2, "min_players": 2},
+    "color_link": {"title": "컬러 링크", "day": "결승 2회전", "max_players": 4, "min_players": 2},
+    "secret_code": {"title": "비밀 코드", "day": "유배지 03", "max_players": 6, "min_players": 2},
 }
 
 HW_ENVELOPES = [
@@ -206,14 +212,30 @@ def create_mp_room(game_type: str, host_name: str, room_id: str) -> dict:
     }
 
 
-def add_ai_to_room(room: dict) -> bool:
+def add_ai_to_room(room: dict, difficulty: str = "normal") -> bool:
     meta = GAME_META[room["game_type"]]
     if len(room["players"]) >= meta["max_players"]:
         return False
+    diff = difficulty if difficulty in AI_TIERS else "normal"
     existing = {p["name"] for p in room["players"]}
     for idx, bn in enumerate(BOT_NAMES, start=1):
         if bn not in existing:
-            room["players"].append({"id": f"ai_{idx}_{random.randint(100,999)}", "name": bn, "is_ai": True})
+            room["players"].append({
+                "id": f"ai_{idx}_{random.randint(100,999)}",
+                "name": bn,
+                "is_ai": True,
+                "ai_level": diff,
+            })
+            return True
+    return False
+
+
+def set_ai_level_in_room(room: dict, target_id: str, level: str) -> bool:
+    if level not in AI_TIERS:
+        return False
+    for p in room["players"]:
+        if p["id"] == target_id and p["is_ai"]:
+            p["ai_level"] = level
             return True
     return False
 
@@ -402,6 +424,54 @@ def start_mp_game(room: dict):
         room["banner"] = f"🗼 목표 숫자 [ {target} ]! 주어진 4개 숫자({nums})와 + - × 로 가장 가깝게 만드세요!"
         room["log"] = "매 라운드 목표에 가장 가까운 플레이어가 탑 +1층! 먼저 5층 달성 시 우승!"
 
+    elif gt == "gradation":
+        deck = list(range(1, 31))
+        random.shuffle(deck)
+        for p in ps:
+            p["hand"] = sorted([deck.pop() for _ in range(5)])
+        line = [deck.pop()]
+        room["state"] = {"deck": deck, "line": line, "turn_idx": 0}
+        room["banner"] = f"🌈 그라데이션 시작! 기준선 {line}에 오름차순으로 카드를 끼워 넣으세요!"
+        room["log"] = "손패를 가장 먼저 0장으로 만드는 플레이어가 우승! 못 넣으면 카드 +1장 드로우!"
+        _gr_advance_ai(room)
+
+    elif gt == "card_janggi":
+        # 4x4 tactical board: 0=Top(P1), 3=Bottom(P0)
+        # Pieces: K(왕), R(차), N(마), P(졸)
+        pieces = [
+            {"id": "p0_K", "owner": 0, "type": "K", "label": "👑", "r": 3, "c": 1},
+            {"id": "p0_R", "owner": 0, "type": "R", "label": "♜", "r": 3, "c": 0},
+            {"id": "p0_N", "owner": 0, "type": "N", "label": "🐴", "r": 3, "c": 2},
+            {"id": "p0_P", "owner": 0, "type": "P", "label": "⚔️", "r": 2, "c": 1},
+            {"id": "p1_K", "owner": 1, "type": "K", "label": "👑", "r": 0, "c": 2},
+            {"id": "p1_R", "owner": 1, "type": "R", "label": "♜", "r": 0, "c": 3},
+            {"id": "p1_N", "owner": 1, "type": "N", "label": "🐴", "r": 0, "c": 1},
+            {"id": "p1_P", "owner": 1, "type": "P", "label": "⚔️", "r": 1, "c": 2},
+        ]
+        room["state"] = {"pieces": pieces, "turn_idx": 0, "max_rounds": 30}
+        room["banner"] = f"♟️ 결승 1회전 카드 장기! {ps[0]['name']}님 선공 — 상대 왕(👑)을 잡으세요!"
+        room["log"] = "👑상하좌우 1칸 · ♜직선 2칸 · 🐴대각선 1칸 · ⚔️전진/좌우 1칸"
+        _cj_advance_ai(room)
+
+    elif gt == "color_link":
+        for p in ps:
+            p["max_chain"] = 0
+        grid = [-1] * 25
+        room["state"] = {"grid": grid, "turn_idx": 0, "goal_chain": 6}
+        room["banner"] = f"🔗 결승 2회전 컬러 링크! {ps[0]['name']}님 차례 — 빈 칸을 눌러 내 색상을 연결하세요!"
+        room["log"] = "상하좌우로 연결된 내 색상 체인이 먼저 6칸이 되거나 보드 종료 시 최장 체인 승리!"
+        _cl_advance_ai(room)
+
+    elif gt == "secret_code":
+        digits = [str(d) for d in random.sample(range(10), 4)]
+        code = "".join(digits)
+        for p in ps:
+            p["guesses"] = []
+            p["solved"] = False
+        room["state"] = {"secret": code, "winner_name": None}
+        room["banner"] = "🔐 비밀 코드(중복 없는 4자리 숫자)를 가장 먼저 해독하세요!"
+        room["log"] = "🟢 스트라이크(자리+숫자 일치) · 🟡 볼(숫자만 포함)"
+
 
 # ---------------------------------------------------------------------------
 # Action Handlers per Game
@@ -418,9 +488,11 @@ def handle_mp_action(room: dict, pid: str, payload: dict) -> Optional[str]:
         if pid != room["host_id"]:
             return "방장만 조작할 수 있습니다."
         if act == "add_ai":
-            add_ai_to_room(room)
+            add_ai_to_room(room, payload.get("ai_level", "normal"))
         elif act == "remove_ai":
             remove_ai_from_room(room, payload.get("target_id"))
+        elif act == "set_ai_level":
+            set_ai_level_in_room(room, payload.get("target_id", ""), payload.get("ai_level", "normal"))
         elif act == "set_rule_mode":
             rm = payload.get("rule_mode", "classic")
             if rm in ("classic", "shuffle"):
@@ -463,6 +535,14 @@ def handle_mp_action(room: dict, pid: str, payload: dict) -> Optional[str]:
         return _act_hidden_word(room, me, payload)
     if gt == "formula_tower":
         return _act_formula_tower(room, me, payload)
+    if gt == "gradation":
+        return _act_gradation(room, me, payload)
+    if gt == "card_janggi":
+        return _act_card_janggi(room, me, payload)
+    if gt == "color_link":
+        return _act_color_link(room, me, payload)
+    if gt == "secret_code":
+        return _act_secret_code(room, me, payload)
     return None
 
 
@@ -1254,6 +1334,261 @@ def _act_formula_tower(room: dict, me: dict, payload: dict):
     return None
 
 
+# --- 11. 그라데이션 (Gradation - 6일차 감옥매치) ---
+def _gr_can_place(line: List[int], val: int, slot: int) -> bool:
+    left_ok = (slot == 0) or (line[slot - 1] < val)
+    right_ok = (slot == len(line)) or (val < line[slot])
+    return left_ok and right_ok
+
+
+def _gr_advance_ai(room: dict):
+    st = room["state"]
+    ps = room["players"]
+    guard = 0
+    while room["phase"] == "PLAYING" and guard < 10:
+        guard += 1
+        curr = ps[st["turn_idx"]]
+        if not curr["is_ai"]:
+            return
+        lvl = curr.get("ai_level", "normal")
+        placed = False
+        # Pro/Devil picks card closest to existing line numbers to narrow gaps
+        hand_order = sorted(curr["hand"], key=lambda v: min(abs(v - x) for x in st["line"])) if lvl in ("pro", "devil") else list(curr["hand"])
+        for val in hand_order:
+            for slot in range(len(st["line"]) + 1):
+                if _gr_can_place(st["line"], val, slot):
+                    curr["hand"].remove(val)
+                    st["line"].insert(slot, val)
+                    placed = True
+                    room["log"] = f"🤖 {curr['name']} [{val}] 배치 성공!"
+                    break
+            if placed:
+                break
+        if not placed and st["deck"]:
+            curr["hand"].append(st["deck"].pop())
+            curr["hand"].sort()
+            room["log"] = f"🤖 {curr['name']} 배치 불가 → +1장 드로우"
+        if len(curr["hand"]) == 0:
+            room["phase"] = "DONE"
+            room["banner"] = f"🏆 그라데이션 우승: {curr['name']} (손패 0장 달성!)"
+            return
+        st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
+        room["banner"] = f"🌈 {ps[st['turn_idx']]['name']}님 차례! 카드를 오름차순 슬롯에 끼워 넣으세요."
+
+
+def _act_gradation(room: dict, me: dict, payload: dict):
+    st = room["state"]
+    ps = room["players"]
+    if ps[st["turn_idx"]]["id"] != me["id"]:
+        return "내 차례가 아닙니다."
+    act = payload.get("action", "place")
+    if act == "draw":
+        if st["deck"]:
+            me["hand"].append(st["deck"].pop())
+            me["hand"].sort()
+        room["log"] = f"🃏 {me['name']} 드로우 선택 (+1장)"
+    else:
+        val = int(payload.get("card", -1))
+        slot = int(payload.get("slot", -1))
+        if val not in me["hand"]:
+            return "보유한 카드가 아닙니다."
+        if not (0 <= slot <= len(st["line"])) or not _gr_can_place(st["line"], val, slot):
+            return "오름차순 위치가 맞지 않습니다!"
+        me["hand"].remove(val)
+        st["line"].insert(slot, val)
+        room["log"] = f"🌈 {me['name']} [{val}] 배치 완료!"
+        if len(me["hand"]) == 0:
+            room["phase"] = "DONE"
+            room["banner"] = f"🏆 그라데이션 우승: {me['name']} (손패 모두 소진!)"
+            return None
+    room["round"] += 1
+    st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
+    room["banner"] = f"🌈 다음 차례: {ps[st['turn_idx']]['name']}"
+    _gr_advance_ai(room)
+    return None
+
+
+# --- 12. 카드 장기 (Card Janggi - 결승 1회전) ---
+def _cj_valid_moves(pieces: List[dict], p: dict) -> List[Tuple[int, int]]:
+    r, c, tp, ow = p["r"], p["c"], p["type"], p["owner"]
+    res = []
+    friendly = {(x["r"], x["c"]) for x in pieces if x["owner"] == ow}
+    if tp == "K":
+        deltas = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    elif tp == "R":
+        deltas = [(-1, 0), (1, 0), (0, -1), (0, 1), (-2, 0), (2, 0), (0, -2), (0, 2)]
+    elif tp == "N":
+        deltas = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+    else:  # P
+        fwd = -1 if ow == 0 else 1
+        deltas = [(fwd, 0), (0, -1), (0, 1)]
+    for dr, dc in deltas:
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < 4 and 0 <= nc < 4 and (nr, nc) not in friendly:
+            res.append((nr, nc))
+    return res
+
+
+def _cj_advance_ai(room: dict):
+    st = room["state"]
+    ps = room["players"]
+    if room["phase"] != "PLAYING":
+        return
+    curr_idx = st["turn_idx"]
+    if not ps[curr_idx]["is_ai"]:
+        return
+    lvl = ps[curr_idx].get("ai_level", "normal")
+    my_pieces = [x for x in st["pieces"] if x["owner"] == curr_idx]
+    all_moves = []
+    for pc in my_pieces:
+        for nr, nc in _cj_valid_moves(st["pieces"], pc):
+            target = next((x for x in st["pieces"] if x["r"] == nr and x["c"] == nc and x["owner"] != curr_idx), None)
+            score = 100 if (target and target["type"] == "K") else (25 if target else random.randint(0, 5))
+            if lvl == "easy":
+                score = random.randint(0, 10)
+            all_moves.append((score, pc, nr, nc, target))
+    if all_moves:
+        all_moves.sort(key=lambda x: x[0], reverse=True)
+        _, pc, nr, nc, target = all_moves[0]
+        if target:
+            st["pieces"].remove(target)
+        pc["r"], pc["c"] = nr, nc
+        if target and target["type"] == "K":
+            room["phase"] = "DONE"
+            room["banner"] = f"🏆 카드 장기 우승: {ps[curr_idx]['name']} (상대 왕 포획!)"
+            return
+    room["round"] += 1
+    st["turn_idx"] = 1 - curr_idx
+    room["banner"] = f"♟️ {ps[st['turn_idx']]['name']}님 차례! 말을 선택해 이동하세요."
+
+
+def _act_card_janggi(room: dict, me: dict, payload: dict):
+    st = room["state"]
+    ps = room["players"]
+    my_idx = next(i for i, p in enumerate(ps) if p["id"] == me["id"])
+    if st["turn_idx"] != my_idx:
+        return "내 차례가 아닙니다."
+    pid = payload.get("piece_id")
+    nr, nc = int(payload.get("r", -1)), int(payload.get("c", -1))
+    pc = next((x for x in st["pieces"] if x["id"] == pid and x["owner"] == my_idx), None)
+    if not pc:
+        return "내 말을 먼저 선택하세요."
+    if (nr, nc) not in _cj_valid_moves(st["pieces"], pc):
+        return "이동할 수 없는 칸입니다."
+    target = next((x for x in st["pieces"] if x["r"] == nr and x["c"] == nc and x["owner"] != my_idx), None)
+    if target:
+        st["pieces"].remove(target)
+    pc["r"], pc["c"] = nr, nc
+    if target and target["type"] == "K":
+        room["phase"] = "DONE"
+        room["banner"] = f"🏆 카드 장기 우승: {me['name']} (상대 왕 포획!)"
+        return None
+    room["round"] += 1
+    st["turn_idx"] = 1 - my_idx
+    room["banner"] = f"♟️ {me['name']} 이동 완료! 다음: {ps[st['turn_idx']]['name']}"
+    _cj_advance_ai(room)
+    return None
+
+
+# --- 13. 컬러 링크 (Color Link - 결승 2회전) ---
+def _cl_max_chain(grid: List[int], owner_idx: int) -> int:
+    seen = set()
+    best = 0
+    for idx in range(25):
+        if grid[idx] != owner_idx or idx in seen:
+            continue
+        q = [idx]
+        seen.add(idx)
+        cnt = 0
+        while q:
+            cur = q.pop(0)
+            cnt += 1
+            r, c = divmod(cur, 5)
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = r + dr, c + dc
+                ni = nr * 5 + nc
+                if 0 <= nr < 5 and 0 <= nc < 5 and grid[ni] == owner_idx and ni not in seen:
+                    seen.add(ni)
+                    q.append(ni)
+        best = max(best, cnt)
+    return best
+
+
+def _cl_advance_ai(room: dict):
+    st = room["state"]
+    ps = room["players"]
+    guard = 0
+    while room["phase"] == "PLAYING" and guard < 8:
+        guard += 1
+        ci = st["turn_idx"]
+        curr = ps[ci]
+        if not curr["is_ai"]:
+            return
+        empties = [i for i, v in enumerate(st["grid"]) if v == -1]
+        if not empties:
+            room["phase"] = "DONE"
+            champ = max(ps, key=lambda x: x["max_chain"])
+            room["banner"] = f"🏆 컬러 링크 우승: {champ['name']} (최장 {champ['max_chain']}연결!)"
+            return
+        lvl = curr.get("ai_level", "normal")
+        if lvl in ("pro", "devil"):
+            best_i = max(empties, key=lambda i: _cl_max_chain([ci if j == i else v for j, v in enumerate(st["grid"])], ci))
+        else:
+            best_i = random.choice(empties)
+        st["grid"][best_i] = ci
+        curr["max_chain"] = _cl_max_chain(st["grid"], ci)
+        if curr["max_chain"] >= st["goal_chain"] or all(v != -1 for v in st["grid"]):
+            room["phase"] = "DONE"
+            champ = max(ps, key=lambda x: x["max_chain"])
+            room["banner"] = f"🏆 컬러 링크 우승: {champ['name']} ({champ['max_chain']}칸 연결!)"
+            return
+        room["round"] += 1
+        st["turn_idx"] = (ci + 1) % len(ps)
+        room["banner"] = f"🔗 {ps[st['turn_idx']]['name']}님 차례! 빈 칸을 눌러 연결하세요."
+
+
+def _act_color_link(room: dict, me: dict, payload: dict):
+    st = room["state"]
+    ps = room["players"]
+    ci = next(i for i, p in enumerate(ps) if p["id"] == me["id"])
+    if st["turn_idx"] != ci:
+        return "내 차례가 아닙니다."
+    cell = int(payload.get("cell", -1))
+    if not (0 <= cell < 25) or st["grid"][cell] != -1:
+        return "빈 칸만 선택할 수 있습니다."
+    st["grid"][cell] = ci
+    me["max_chain"] = _cl_max_chain(st["grid"], ci)
+    if me["max_chain"] >= st["goal_chain"] or all(v != -1 for v in st["grid"]):
+        room["phase"] = "DONE"
+        champ = max(ps, key=lambda x: x["max_chain"])
+        room["banner"] = f"🏆 컬러 링크 우승: {champ['name']} ({champ['max_chain']}칸 연결!)"
+        return None
+    room["round"] += 1
+    st["turn_idx"] = (ci + 1) % len(ps)
+    room["banner"] = f"🔗 {me['name']} 연결 ({me['max_chain']}칸)! 다음: {ps[st['turn_idx']]['name']}"
+    _cl_advance_ai(room)
+    return None
+
+
+# --- 14. 비밀 코드 (Secret Code - 유배지 03) ---
+def _act_secret_code(room: dict, me: dict, payload: dict):
+    guess = (payload.get("guess") or "").strip()
+    if len(guess) != 4 or not guess.isdigit() or len(set(guess)) != 4:
+        return "중복 없는 4자리 숫자(예: 1479)를 입력하세요."
+    secret = room["state"]["secret"]
+    strikes = sum(1 for i in range(4) if guess[i] == secret[i])
+    balls = sum(1 for i in range(4) if guess[i] != secret[i] and guess[i] in secret)
+    me["guesses"].append({"text": guess, "s": strikes, "b": balls})
+    if strikes == 4:
+        me["solved"] = True
+        room["phase"] = "DONE"
+        room["state"]["winner_name"] = me["name"]
+        room["banner"] = f"🏆 비밀 코드 해독 성공! {me['name']}님 우승! (정답: {secret})"
+    else:
+        room["banner"] = f"🔐 {me['name']} [{guess}] → 🟢 {strikes}S  🟡 {balls}B"
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Privacy-Safe Serializer per Viewer
 # ---------------------------------------------------------------------------
@@ -1266,7 +1601,13 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
     players_out = []
     for idx, p in enumerate(ps):
         is_me = p["id"] == viewer_id
-        po = {"id": p["id"], "name": p["name"], "is_ai": p["is_ai"], "is_host": p["id"] == room["host_id"]}
+        po = {
+            "id": p["id"],
+            "name": p["name"],
+            "is_ai": p["is_ai"],
+            "ai_level": p.get("ai_level", "normal") if p["is_ai"] else None,
+            "is_host": p["id"] == room["host_id"],
+        }
         if gt == "choice":
             po.update({"score": p.get("score", 0), "last": p.get("last", "-"), "submitted": p.get("pending") is not None})
         elif gt == "heavy_13":
@@ -1334,9 +1675,30 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
                 "last_expr": p.get("last_expr", "-"),
                 "submitted": p.get("pending") is not None,
             })
+        elif gt == "gradation":
+            po.update({
+                "hand_count": len(p.get("hand", [])),
+                "hand": p.get("hand", []) if (is_me or done) else [],
+                "is_turn": idx == st.get("turn_idx", 0) and room["phase"] == "PLAYING",
+            })
+        elif gt == "card_janggi":
+            po.update({"is_turn": idx == st.get("turn_idx", 0) and room["phase"] == "PLAYING"})
+        elif gt == "color_link":
+            po.update({
+                "max_chain": p.get("max_chain", 0),
+                "is_turn": idx == st.get("turn_idx", 0) and room["phase"] == "PLAYING",
+            })
+        elif gt == "secret_code":
+            po.update({
+                "tries": len(p.get("guesses", [])),
+                "guesses": p.get("guesses", []) if (is_me or done) else [],
+                "solved": p.get("solved", False),
+            })
         players_out.append(po)
 
     state_out = dict(st)
+    if gt == "secret_code" and not done:
+        state_out["secret"] = None
     if gt == "hidden_word":
         setter_id = ps[st.get("setter_idx", 0)]["id"] if ps else ""
         if viewer_id != setter_id and not done:

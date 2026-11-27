@@ -16,7 +16,13 @@ let mpSel = {
   pbCol: "black", pbCnt: 2, pbTarget: null,
   abBid: 3, wgR: null, wgC: null, wgWall: "N",
   exRuleMode: "classic",
+  aiLevel: "normal",
+  grCard: null,
+  cjPiece: null,
 };
+
+const AI_TIER_LABELS = { easy: "🌱쉬움", normal: "⚖️보통", pro: "🔥고수", devil: "😈악마" };
+const AI_TIER_ORDER = ["easy", "normal", "pro", "devil"];
 
 function mpStopPoll() {
   if (mpPollTimer) { clearInterval(mpPollTimer); mpPollTimer = null; }
@@ -86,7 +92,7 @@ async function mpCreate(mode) {
     const res = await fetch("/api/mp/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ game_type: mpGameType, name, mode, rule_mode: mpSel.exRuleMode }),
+      body: JSON.stringify({ game_type: mpGameType, name, mode, rule_mode: mpSel.exRuleMode, ai_level: mpSel.aiLevel }),
     });
     const out = await res.json();
     if (!res.ok || out.error) return mpShowErr(out.error || "방 생성 실패");
@@ -211,8 +217,15 @@ function renderMp() {
       if (p.id === d.viewer_id) li.classList.add("is-me");
       const rCls = p.is_host ? "host" : (p.is_ai ? "ai" : "guest");
       const rTxt = p.is_host ? "👑 방장" : (p.is_ai ? "🤖 AI" : "🎟️ 참가자");
+      const lvl = p.ai_level || "normal";
+      const nextLvl = AI_TIER_ORDER[(AI_TIER_ORDER.indexOf(lvl) + 1) % AI_TIER_ORDER.length];
+      const tierBtn = p.is_ai
+        ? (isHost
+            ? `<button type="button" class="ai-tier-btn ${lvl}" title="클릭해 AI 난이도 변경" onclick="mpSend({action:'set_ai_level',target_id:'${p.id}',ai_level:'${nextLvl}'})">${AI_TIER_LABELS[lvl]}</button>`
+            : `<span class="ai-tier-btn ${lvl}">${AI_TIER_LABELS[lvl]}</span>`)
+        : "";
       const kick = isHost && p.is_ai ? `<button type="button" class="ai-kick-btn" onclick="mpSend({action:'remove_ai',target_id:'${p.id}'})">제거</button>` : "";
-      li.innerHTML = `<div class="lobby-left"><span class="role-pill ${rCls}">${rTxt}</span><span>${p.name}</span>${p.id === d.viewer_id ? '<span class="role-pill me">나</span>' : ""}</div>${kick}`;
+      li.innerHTML = `<div class="lobby-left"><span class="role-pill ${rCls}">${rTxt}</span><span>${p.name}</span>${p.id === d.viewer_id ? '<span class="role-pill me">나</span>' : ""}</div><div style="display:flex;align-items:center;gap:5px;">${tierBtn}${kick}</div>`;
       ul.appendChild(li);
     });
     $("mp-host-bar").classList.toggle("hidden", !isHost);
@@ -244,6 +257,10 @@ function renderMp() {
   else if (d.game_type === "wall_go_2") renderMpWallGo(d, me, board, ctrl, isHost);
   else if (d.game_type === "hidden_word") renderMpHiddenWord(d, me, board, ctrl, isHost);
   else if (d.game_type === "formula_tower") renderMpFormulaTower(d, me, board, ctrl, isHost);
+  else if (d.game_type === "gradation") renderMpGradation(d, me, board, ctrl, isHost);
+  else if (d.game_type === "card_janggi") renderMpCardJanggi(d, me, board, ctrl, isHost);
+  else if (d.game_type === "color_link") renderMpColorLink(d, me, board, ctrl, isHost);
+  else if (d.game_type === "secret_code") renderMpSecretCode(d, me, board, ctrl, isHost);
 }
 
 function mpDoneFooter(ctrl, isHost) {
@@ -486,6 +503,15 @@ function renderMpPiggyBank(d, me, board, ctrl, isHost) {
   }
 }
 
+// AI default difficulty selector
+document.querySelectorAll(".mp-ai-lvl").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".mp-ai-lvl").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    mpSel.aiLevel = btn.dataset.lvl;
+  });
+});
+
 // Exchange rule mode selector
 document.querySelectorAll(".mp-ex-mode").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -499,7 +525,7 @@ document.querySelectorAll(".mp-ex-mode").forEach((btn) => {
 if ($("btn-mp-solo")) $("btn-mp-solo").onclick = () => mpCreate("solo");
 if ($("btn-mp-create")) $("btn-mp-create").onclick = () => mpCreate("multi");
 if ($("btn-mp-join")) $("btn-mp-join").onclick = mpJoin;
-if ($("btn-mp-add-ai")) $("btn-mp-add-ai").onclick = () => mpSend({ action: "add_ai" });
+if ($("btn-mp-add-ai")) $("btn-mp-add-ai").onclick = () => mpSend({ action: "add_ai", ai_level: mpSel.aiLevel });
 if ($("btn-mp-rem-ai")) $("btn-mp-rem-ai").onclick = () => mpSend({ action: "remove_ai" });
 if ($("btn-mp-start")) $("btn-mp-start").onclick = () => mpSend({ action: "start" });
 if ($("btn-mp-end")) $("btn-mp-end").onclick = () => { if (confirm("방장 권한으로 게임을 종료할까요?")) mpSend({ action: "end_game" }); };
@@ -688,5 +714,103 @@ function renderMpFormulaTower(d, me, board, ctrl, isHost) {
     <div style="display:flex;gap:8px;">
       <input id="mp-ft-in" class="text-input" placeholder="예: 9*4-5+2" />
       <button class="btn btn-gold" style="padding:0 16px;white-space:nowrap;" onclick="mpSend({expr:$('mp-ft-in').value})">🗼 제출</button>
+    </div>`;
+}
+
+// --- 11. 그라데이션 (Gradation) ---
+function renderMpGradation(d, me, board, ctrl, isHost) {
+  $("mp-hud-round").textContent = `R${d.round}`;
+  $("mp-hud-mid").textContent = `덱 ${(d.state.deck || []).length}장`;
+  $("mp-hud-right").textContent = `내 패 ${me.hand_count}장`;
+  const line = d.state.line || [];
+  const hueFor = (v) => `hsl(${Math.round((v / 30) * 320)}, 72%, 44%)`;
+  let lineHtml = "";
+  for (let s = 0; s <= line.length; s++) {
+    if (me.is_turn && mpSel.grCard !== null) {
+      lineHtml += `<button type="button" class="gr-slot-btn" onclick="mpSend({action:'place',card:${mpSel.grCard},slot:${s}});mpSel.grCard=null;">+</button>`;
+    }
+    if (s < line.length) {
+      lineHtml += `<div class="gr-card-chip" style="background:${hueFor(line[s])};">${line[s]}</div>`;
+    }
+  }
+  board.innerHTML = `
+    <div class="gr-line">${lineHtml}</div>
+    <div class="d1-score-grid">${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name}${p.is_turn ? " ⚡" : ""}</span><strong>${p.hand_count}장 남음</strong></div>`).join("")}</div>`;
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+  if (!me.is_turn) {
+    ctrl.innerHTML = `<div class="wait-pill">⏳ 다른 플레이어 차례입니다...</div>`;
+    return;
+  }
+  ctrl.innerHTML = `
+    <div class="h13-row">${(me.hand || []).map((v) => `<button type="button" class="h13-btn ${mpSel.grCard === v ? "selected" : ""}" style="border-color:${hueFor(v)};" onclick="mpSel.grCard=${v};renderMp()">${v}</button>`).join("")}</div>
+    <button type="button" class="btn btn-dark" style="padding:8px;font-size:12.5px;" onclick="mpSend({action:'draw'});mpSel.grCard=null;">🃏 놓을 곳 없음 · +1장 드로우</button>`;
+}
+
+// --- 12. 카드 장기 (Card Janggi 4x4) ---
+function renderMpCardJanggi(d, me, board, ctrl, isHost) {
+  const myIdx = d.players.findIndex((p) => p.id === d.viewer_id);
+  $("mp-hud-round").textContent = `턴 ${d.round}`;
+  $("mp-hud-mid").textContent = myIdx === 0 ? "🔵 아래 진영" : "🔴 위 진영";
+  $("mp-hud-right").textContent = me.is_turn ? "⚡ 내 차례" : "상대 차례";
+  const pieces = d.state.pieces || [];
+  let cells = "";
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const pc = pieces.find((x) => x.r === r && x.c === c);
+      const isSel = pc && mpSel.cjPiece === pc.id;
+      const cls = pc ? (pc.owner === 0 ? "p0" : "p1") : "";
+      cells += `<div class="cj-cell ${cls} ${isSel ? "sel" : ""}" onclick="mpCjTap(${r},${c},'${pc ? pc.id : ""}',${pc ? pc.owner : -1},${myIdx})">${pc ? pc.label : ""}</div>`;
+    }
+  }
+  board.innerHTML = `<div class="cj-grid">${cells}</div>`;
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+  ctrl.innerHTML = `<div class="wait-pill">${me.is_turn ? (mpSel.cjPiece ? "🎯 이동할 목표 칸을 터치하세요!" : "♟️ 이동할 내 말을 먼저 터치하세요!") : "⏳ 상대방의 수를 기다리는 중..."}</div>`;
+}
+
+function mpCjTap(r, c, pieceId, owner, myIdx) {
+  if (!mpData || mpData.phase !== "PLAYING") return;
+  const me = mpData.players[myIdx];
+  if (!me || !me.is_turn) return;
+  if (pieceId && owner === myIdx) {
+    mpSel.cjPiece = pieceId;
+    if (typeof SFX !== "undefined") SFX.chip();
+    renderMp();
+  } else if (mpSel.cjPiece) {
+    const pid = mpSel.cjPiece;
+    mpSel.cjPiece = null;
+    mpSend({ piece_id: pid, r, c });
+  }
+}
+
+// --- 13. 컬러 링크 (Color Link 5x5) ---
+function renderMpColorLink(d, me, board, ctrl, isHost) {
+  $("mp-hud-round").textContent = `R${d.round}`;
+  $("mp-hud-mid").textContent = `목표 ${d.state.goal_chain}연결`;
+  $("mp-hud-right").textContent = `내 최장 ${me.max_chain}칸`;
+  const grid = d.state.grid || [];
+  const dots = ["🟢", "🩷", "🔵", "🟡"];
+  board.innerHTML = `
+    <div class="cl-grid">${grid.map((v, i) => `<div class="cl-cell ${v >= 0 ? `c${v % 4}` : ""}" onclick="${me.is_turn && v === -1 ? `mpSend({cell:${i}})` : ""}"></div>`).join("")}</div>
+    <div class="d1-score-grid">${d.players.map((p, i) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${dots[i % 4]} ${p.name}${p.is_turn ? " ⚡" : ""}</span><strong>${p.max_chain}연결</strong></div>`).join("")}</div>`;
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+  ctrl.innerHTML = `<div class="wait-pill">${me.is_turn ? "🔗 빈 칸을 터치해 내 색상 체인을 연결하세요!" : "⏳ 다른 플레이어 차례입니다..."}</div>`;
+}
+
+// --- 14. 비밀 코드 (Secret Code - 4-digit Bulls & Cows) ---
+function renderMpSecretCode(d, me, board, ctrl, isHost) {
+  $("mp-hud-round").textContent = `시도 ${me.tries}회`;
+  $("mp-hud-mid").textContent = "중복 없는 4자리";
+  $("mp-hud-right").textContent = "🟢S / 🟡B";
+  const rows = (me.guesses || []).map((g) => `
+    <div class="d1-pcell"><span><strong style="letter-spacing:3px;">${g.text}</strong></span><span>🟢 ${g.s}S &nbsp; 🟡 ${g.b}B</span></div>
+  `).join("");
+  board.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:5px;">${rows || `<div class="wait-pill">4자리 숫자(중복 없음)를 입력해 암호를 해독하세요!</div>`}</div>
+    <div class="d1-score-grid" style="margin-top:6px;">${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name}</span><strong>${p.solved ? "🏆 해독!" : `${p.tries}회`}</strong></div>`).join("")}</div>`;
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+  ctrl.innerHTML = `
+    <div style="display:flex;gap:8px;">
+      <input id="mp-sc-in" class="text-input code-input" maxlength="4" inputmode="numeric" placeholder="예: 1479" />
+      <button class="btn btn-gold" style="padding:0 16px;white-space:nowrap;" onclick="mpSend({guess:$('mp-sc-in').value})">🔐 해독</button>
     </div>`;
 }

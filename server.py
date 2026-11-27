@@ -1226,8 +1226,9 @@ async def mp_create(payload: dict):
             room["rule_mode"] = payload["rule_mode"]
         if mode == "solo":
             ai_cnt = int(payload.get("ai_count", mp_engine.GAME_META[gt]["max_players"] - 1))
+            ai_level = payload.get("ai_level", "normal")
             for _ in range(ai_cnt):
-                mp_engine.add_ai_to_room(room)
+                mp_engine.add_ai_to_room(room, difficulty=ai_level)
             mp_engine.start_mp_game(room)
         STORE.set_json(f"hs:mp:{rid}", room)
         pid = room["host_id"]

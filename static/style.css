@@ -2442,3 +2442,102 @@ body {
   padding: 4px 8px;
   border-radius: 6px;
 }
+
+/* v3.5 AI Tier Pills & 4 New Game Boards */
+#screen-mp[data-theme="gradation"] { --mp-accent: #ff8787; --mp-glow: rgba(255, 135, 135, 0.14); }
+#screen-mp[data-theme="card_janggi"] { --mp-accent: #fcc419; --mp-glow: rgba(252, 196, 25, 0.15); }
+#screen-mp[data-theme="color_link"] { --mp-accent: #38d9a9; --mp-glow: rgba(56, 217, 169, 0.14); }
+#screen-mp[data-theme="secret_code"] { --mp-accent: #51cf66; --mp-glow: rgba(81, 207, 102, 0.14); }
+
+.ai-tier-btn {
+  font-size: 10.5px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+}
+.ai-tier-btn.easy { border-color: #69db7c; color: #69db7c; }
+.ai-tier-btn.normal { border-color: #74c0fc; color: #74c0fc; }
+.ai-tier-btn.pro { border-color: #ffa94d; color: #ffa94d; }
+.ai-tier-btn.devil { border-color: #ff6b6b; color: #ff6b6b; background: rgba(255, 107, 107, 0.16); }
+
+.gr-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+}
+.gr-slot-btn {
+  width: 24px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1.5px dashed rgba(247, 223, 140, 0.55);
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold-bright);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.gr-card-chip {
+  min-width: 34px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.cj-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  max-width: 240px;
+  margin: 0 auto;
+  width: 100%;
+}
+.cj-cell {
+  aspect-ratio: 1;
+  border-radius: 9px;
+  background: #1a1714;
+  border: 1.5px solid rgba(212, 175, 55, 0.28);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+}
+.cj-cell.p0 { background: rgba(77, 171, 247, 0.16); border-color: #4dabf7; }
+.cj-cell.p1 { background: rgba(255, 107, 107, 0.16); border-color: #ff6b6b; }
+.cj-cell.sel { box-shadow: 0 0 0 2px #fff; transform: scale(1.04); }
+
+.cl-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  max-width: 245px;
+  margin: 0 auto;
+  width: 100%;
+}
+.cl-cell {
+  aspect-ratio: 1;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+.cl-cell.c0 { background: #38d9a9; border-color: #fff; }
+.cl-cell.c1 { background: #f783ac; border-color: #fff; }
+.cl-cell.c2 { background: #748ffc; border-color: #fff; }
+.cl-cell.c3 { background: #fab005; border-color: #fff; }
