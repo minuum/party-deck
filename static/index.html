@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0a0a0f" />
   <meta name="description" content="5인 생존 베팅 카드 게임 HIT, STAY — 1인 AI 대전 & 친구 초대 실시간 멀티플레이" />
   <meta property="og:title" content="Party Deck — HIT, STAY" />
@@ -10,9 +12,10 @@
   <meta property="og:type" content="website" />
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="apple-touch-icon" href="/static/favicon.svg" />
-  <title>Party Deck — HIT, STAY</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <title>Party Deck — THE DEVIL'S PLAN</title>
+  <link rel="stylesheet" href="/static/style.css?v=4.0" />
 </head>
+
 <body>
   <!-- LEFT PATCH NOTES & LIVE STATUS PANEL -->
   <button id="btn-patch-toggle" class="patch-fab" type="button">📋 패치노트</button>
@@ -42,10 +45,17 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v3.9 <span>방금 전</span></div>
+          <div class="patch-ver">v4.0 <span>방금 전</span></div>
           <ul>
-            <li><strong>메인 페이지 UI 전면 개편</strong>: 한눈에 들어오는 <strong>가로형 앱 카드 리스트</strong> (좌측 전용 SVG 아이콘 · 중앙 타이틀/요약 · 우측 <code>📖 설명</code> &amp; <code>▶ 플레이</code>)</li>
-            <li>모든 게임 카드에서 <strong>룰 설명 시트 → 바로 플레이하기</strong>로 자연스럽게 이어지는 플로우 적용</li>
+            <li><strong>갤러리 카드 그리드(Gallery Card Grid) UI 전면 업그레이드</strong>: 모바일 2열 · 태블릿 3열 · 데스크톱 4열 반응형 쇼케이스 카드 레이아웃 적용</li>
+            <li><strong>CSS Subgrid &amp; Container Queries</strong> 적용으로 카드별 미디어 배너·제목·설명·버튼 라인 완벽 정렬 + <code>?v=4.0</code> 캐시 무효화 적용</li>
+            <li><strong>Impeccable 다크 럭셔리 폴리싱</strong>: 게임별 시그니처 스포트라이트 배너, <code>📖 설명</code> → <code>▶ 플레이</code> 원클릭 흐름 유지</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v3.9</div>
+          <ul>
+            <li><strong>메인 페이지 UI 개편</strong>: 전용 SVG 아이콘·요약·<code>📖 설명</code> &amp; <code>▶ 플레이</code> 규칙 시트 플로우 적용</li>
           </ul>
         </div>
         <div class="patch-item">
@@ -59,26 +69,35 @@
           <div class="patch-ver">v3.7</div>
           <ul>
             <li><strong>결승 1회전 〈카드 장기〉 원작 룰 전면 수정!</strong> (5×5 보드 · 큰 말1+작은 말3 · 5종 동물 행마카드 순서 배치 · 후공 첫 4장 예외 룰)</li>
-            <li><strong>결승 2회전 〈컬러 링크〉 원작 룰 전면 수정!</strong> (6×6 보드 · 5색 쌍 배치 · <strong>🚨 불가능 선언</strong> &amp; <strong>겹침 금지 + 길이 6칸↑ 경로 증명</strong>)</li>
+            <li><strong>결승 2회전 〈컬러 링크〉 원작 룰 전면 수정!</strong> (6×6 보드 · 5색 쌍 배치 · <strong>🚨 불가능 선언</strong> &amp;
+              <strong>겹침 금지 + 길이 6칸↑ 경로 증명</strong>)
+            </li>
           </ul>
         </div>
         <div class="patch-item">
           <div class="patch-ver">v3.6</div>
           <ul>
-            <li><strong>〈그라데이션〉 원작 룰 전면 수정!</strong> (<code>⬛검정-▪️진회색-▫️상아색-⬜흰색-▫️상아색-▪️진회색-⬛검정</code> 대칭 7통 · 오름차순·총합≤30 배치 · 통 색상만 공개되는 1:1 블러핑 심리전)</li>
+            <li><strong>〈그라데이션〉 원작 룰 전면 수정!</strong> (<code>⬛검정-▪️진회색-▫️상아색-⬜흰색-▫️상아색-▪️진회색-⬛검정</code> 대칭 7통 ·
+              오름차순·총합≤30 배치 · 통 색상만 공개되는 1:1 블러핑 심리전)</li>
           </ul>
         </div>
         <div class="patch-item">
           <div class="patch-ver">v3.5</div>
           <ul>
-            <li><strong>AI 4단계 개별 난이도 설정</strong> 추가 (<code>🌱쉬움</code> · <code>⚖️보통</code> · <code>🔥고수</code> · <code>😈악마</code> — 대기실에서 AI마다 개별 클릭 변경 가능!)</li>
-            <li><strong>4개 게임 추가 멀티플레이 구현</strong>: <code>그라데이션</code> · <code>카드 장기</code> · <code>컬러 링크</code> · <code>비밀 코드</code> (<strong>16 / 23 · 70%</strong> 달성!)</li>
+            <li><strong>AI 4단계 개별 난이도 설정</strong> 추가 (<code>🌱쉬움</code> · <code>⚖️보통</code> · <code>🔥고수</code> ·
+              <code>😈악마</code> — 대기실에서 AI마다 개별 클릭 변경 가능!)
+            </li>
+            <li><strong>4개 게임 추가 멀티플레이 구현</strong>: <code>그라데이션</code> · <code>카드 장기</code> · <code>컬러 링크</code> ·
+              <code>비밀 코드</code> (<strong>16 / 23 · 70%</strong> 달성!)
+            </li>
           </ul>
         </div>
         <div class="patch-item">
           <div class="patch-ver">v3.4</div>
           <ul>
-            <li><strong>〈미스터리 거래소〉 PRO 업그레이드</strong>: <code>🏛️ 데블스 원작 룰</code> vs <code>🎲 랜덤 룰 섞기</code> 선택 + 종목별 <strong>비밀 룰 네모 가림(🔒) → 매 라운드 1개씩 공개</strong> + 실제 주가 히스토리 꺾은선 차트</li>
+            <li><strong>〈미스터리 거래소〉 PRO 업그레이드</strong>: <code>🏛️ 데블스 원작 룰</code> vs <code>🎲 랜덤 룰 섞기</code> 선택 + 종목별
+              <strong>비밀 룰 네모 가림(🔒) → 매 라운드 1개씩 공개</strong> + 실제 주가 히스토리 꺾은선 차트
+            </li>
             <li><strong>〈히든 워드〉 Gemini 2.5 Flash 한국어 3축 관계 AI</strong> 활성화 (<code>thinkingBudget: 0</code>)</li>
           </ul>
         </div>
@@ -92,7 +111,8 @@
         <div class="patch-item">
           <div class="patch-ver">v3.2</div>
           <ul>
-            <li><strong>4·5일차 4개 게임 일괄 멀티플레이 구현!</strong> (<code>경매 빙고</code> · <code>벽바둑 2</code> · <code>히든 워드</code> · <code>수식의 탑</code>)</li>
+            <li><strong>4·5일차 4개 게임 일괄 멀티플레이 구현!</strong> (<code>경매 빙고</code> · <code>벽바둑 2</code> · <code>히든 워드</code>
+              · <code>수식의 탑</code>)</li>
             <li>각 게임 전용 SVG 아이콘·시그니처 테마·보드 그래픽 적용 · <strong>12 / 23 (52%)</strong> 돌파!</li>
           </ul>
         </div>
@@ -100,14 +120,16 @@
           <div class="patch-ver">v3.1</div>
           <ul>
             <li><strong>게임별 전용 SVG 엠블럼 &amp; 시그니처 컬러 테마</strong> 전면 적용</li>
-            <li><strong>러시안 룰렛 원형 16약실 리볼버 실린더 SVG</strong> · <strong>미스터리 거래소 미니 주가 차트</strong> · <strong>무거운 13 위험 게이지</strong> · <strong>양자택일 과반수 줄다리기 바</strong> · <strong>보석 암시장 컷팅 주얼 카드</strong> 적용</li>
+            <li><strong>러시안 룰렛 원형 16약실 리볼버 실린더 SVG</strong> · <strong>미스터리 거래소 미니 주가 차트</strong> · <strong>무거운 13 위험
+                게이지</strong> · <strong>양자택일 과반수 줄다리기 바</strong> · <strong>보석 암시장 컷팅 주얼 카드</strong> 적용</li>
           </ul>
         </div>
         <div class="patch-item">
           <div class="patch-ver">v3.0</div>
           <ul>
             <li><strong>구현된 8개 게임 전체 멀티플레이(100%) 지원!</strong></li>
-            <li><code>양자택일·무거운13·미스터리거래소·러시안룰렛·보석암시장·돼지저금통</code> 모두 방 코드/초대 링크(<code>?mp_room=</code>)·AI 추가/제거·7일 저장·새로고침 복구 지원</li>
+            <li><code>양자택일·무거운13·미스터리거래소·러시안룰렛·보석암시장·돼지저금통</code> 모두 방 코드/초대 링크(<code>?mp_room=</code>)·AI 추가/제거·7일
+              저장·새로고침 복구 지원</li>
           </ul>
         </div>
         <div class="patch-item">
@@ -134,14 +156,16 @@
         <div class="patch-item">
           <div class="patch-ver">v2.3</div>
           <ul>
-            <li><strong>결승전 3회전 〈수식 신호등〉</strong> 구현 완료! (9칸 등식 추리 · <code>^</code> 제곱 포함 · 🟩🟨🟥 신호등 판정 · 솔로 &amp; 결승 1:1 AI 대결)</li>
+            <li><strong>결승전 3회전 〈수식 신호등〉</strong> 구현 완료! (9칸 등식 추리 · <code>^</code> 제곱 포함 · 🟩🟨🟥 신호등 판정 · 솔로 &amp; 결승
+              1:1 AI 대결)</li>
             <li>Party Deck 구현 현황 <strong>6 / 23</strong> 달성!</li>
           </ul>
         </div>
         <div class="patch-item">
           <div class="patch-ver">v2.2</div>
           <ul>
-            <li><strong>HIT, STAY 레이즈 한도 원작 룰 적용</strong> — 5칩 제한 해제, 최소 칩 보유자 잔액까지 자유 슬라이더 &amp; <strong>최대/올인</strong> 베팅 지원</li>
+            <li><strong>HIT, STAY 레이즈 한도 원작 룰 적용</strong> — 5칩 제한 해제, 최소 칩 보유자 잔액까지 자유 슬라이더 &amp; <strong>최대/올인</strong>
+              베팅 지원</li>
           </ul>
         </div>
         <div class="patch-item">
@@ -269,15 +293,19 @@
     <!-- PARTY DECK GAME HUB (MAIN LANDING) -->
     <section id="screen-hub" class="screen active">
       <div class="hub-header">
-        <div class="eyebrow">THE DEVIL'S PLAN : DEAD AGAIN</div>
-        <h1 class="hub-title">PARTY DECK</h1>
-        <p class="brand-sub">모바일 두뇌 서바이벌 게임 종합 채널</p>
+        <div class="hub-brand-block">
+          <div class="eyebrow">THE DEVIL'S PLAN : DEAD AGAIN</div>
+          <h1 class="hub-title">PARTY DECK</h1>
+          <p class="brand-sub">모바일·PC 두뇌 서바이벌 게임 종합 갤러리</p>
+        </div>
         <div class="hub-progress-wrap">
           <div class="hub-progress-meta">
             <span>전체 게임 구현 현황</span>
-            <strong id="hub-progress-text">1 / 23 구현 완료</strong>
+            <strong id="hub-progress-text">16 / 23 구현 완료</strong>
           </div>
-          <div class="hub-progress-bar"><div id="hub-progress-fill" class="hub-progress-fill" style="width:4.3%"></div></div>
+          <div class="hub-progress-bar">
+            <div id="hub-progress-fill" class="hub-progress-fill" style="width:70%"></div>
+          </div>
         </div>
       </div>
 
@@ -371,8 +399,10 @@
         </div>
         <div id="mp-host-bar" class="lobby-actions" style="margin-top:4px;">
           <div class="ai-manage-row">
-            <button id="btn-mp-add-ai" type="button" class="btn btn-outline btn-sm" style="flex:1;margin:0;">🤖 AI +1 추가</button>
-            <button id="btn-mp-rem-ai" type="button" class="btn btn-dark btn-sm" style="flex:1;margin:0;">AI -1 빼기</button>
+            <button id="btn-mp-add-ai" type="button" class="btn btn-outline btn-sm" style="flex:1;margin:0;">🤖 AI +1
+              추가</button>
+            <button id="btn-mp-rem-ai" type="button" class="btn btn-dark btn-sm" style="flex:1;margin:0;">AI -1
+              빼기</button>
           </div>
           <button id="btn-mp-start" type="button" class="btn btn-gold btn-lg">🚀 게임 시작하기</button>
         </div>
@@ -383,7 +413,8 @@
       </div>
 
       <!-- Playing / Done Dynamic View -->
-      <div id="mp-play-view" class="hidden" style="display:flex;flex-direction:column;gap:8px;flex:1;overflow:hidden;margin-top:6px;">
+      <div id="mp-play-view" class="hidden"
+        style="display:flex;flex-direction:column;gap:8px;flex:1;overflow:hidden;margin-top:6px;">
         <div class="d1-hud" style="margin:0;">
           <span class="round-pill" id="mp-hud-round">R1</span>
           <span class="phase-pill" id="mp-hud-mid">진행 중</span>
@@ -428,7 +459,8 @@
         <div id="gm-hand" class="h13-row"></div>
         <div class="h13-pick-label">2. 교환할 상대 선택 (마니또에게 보석을, 적에게 폭탄을!)</div>
         <div id="gm-targets" class="h13-row"></div>
-        <button type="button" id="btn-gm-trade" class="btn btn-gold" style="padding:11px;" disabled>🤝 교환 및 라운드 정산</button>
+        <button type="button" id="btn-gm-trade" class="btn btn-gold" style="padding:11px;" disabled>🤝 교환 및 라운드
+          정산</button>
       </div>
     </section>
 
@@ -479,34 +511,43 @@
       <!-- Friend 1:1 Setup / Waiting Panel -->
       <div id="fl-friend-box" class="glass-card hidden" style="padding:12px;gap:8px;margin-bottom:6px;">
         <div id="fl-friend-entry">
-          <button id="btn-fl-resume" type="button" class="btn btn-resume hidden" style="width:100%;margin-bottom:8px;padding:9px;">
+          <button id="btn-fl-resume" type="button" class="btn btn-resume hidden"
+            style="width:100%;margin-bottom:8px;padding:9px;">
             <span>💾 진행 중인 방 이어하기</span>
             <small id="fl-resume-meta">방 코드 ----</small>
           </button>
           <div class="field-label" style="margin-bottom:6px;">👥 친구와 1:1 수식 신호등 대결</div>
           <div style="display:flex;gap:6px;margin-bottom:8px;">
-            <input id="fl-nick" class="text-input" style="padding:8px 10px;font-size:13px;" maxlength="12" placeholder="내 닉네임" value="민우" />
-            <button type="button" id="btn-fl-create" class="btn btn-gold" style="padding:8px 12px;font-size:12.5px;white-space:nowrap;">👑 방 만들기</button>
+            <input id="fl-nick" class="text-input" style="padding:8px 10px;font-size:13px;" maxlength="12"
+              placeholder="내 닉네임" value="민우" />
+            <button type="button" id="btn-fl-create" class="btn btn-gold"
+              style="padding:8px 12px;font-size:12.5px;white-space:nowrap;">👑 방 만들기</button>
           </div>
           <div style="display:flex;gap:6px;">
-            <input id="fl-code-in" class="text-input code-input" style="padding:8px 10px;font-size:13px;" maxlength="4" placeholder="방 코드 4자리" />
-            <button type="button" id="btn-fl-join" class="btn btn-dark" style="padding:8px 14px;font-size:12.5px;white-space:nowrap;">입장</button>
+            <input id="fl-code-in" class="text-input code-input" style="padding:8px 10px;font-size:13px;" maxlength="4"
+              placeholder="방 코드 4자리" />
+            <button type="button" id="btn-fl-join" class="btn btn-dark"
+              style="padding:8px 14px;font-size:12.5px;white-space:nowrap;">입장</button>
           </div>
           <div id="fl-friend-err" class="error-msg hidden" style="margin-top:6px;"></div>
         </div>
-        <div id="fl-friend-wait" class="hidden" style="text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center;">
+        <div id="fl-friend-wait" class="hidden"
+          style="text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center;">
           <div class="role-banner host">👑 방장 대기 중 · 코드 <strong id="fl-wait-code">----</strong></div>
           <p class="muted" style="font-size:12px;">친구가 입장하면 각자 상대가 맞힐 9칸 비밀 수식을 출제합니다!</p>
           <div style="display:flex;gap:6px;">
             <button type="button" id="btn-fl-copy-code" class="btn btn-dark btn-sm" style="margin:0;">📋 코드 복사</button>
-            <button type="button" id="btn-fl-copy-link" class="btn btn-outline btn-sm" style="margin:0;">🔗 초대 링크 복사</button>
+            <button type="button" id="btn-fl-copy-link" class="btn btn-outline btn-sm" style="margin:0;">🔗 초대 링크
+              복사</button>
           </div>
         </div>
         <div id="fl-friend-setup" class="hidden" style="display:flex;flex-direction:column;gap:8px;align-items:center;">
           <div class="role-banner host" id="fl-setup-status">🔐 상대가 맞힐 내 9칸 비밀 수식을 출제하세요!</div>
           <div style="display:flex;gap:6px;width:100%;">
-            <button type="button" id="btn-fl-rand-secret" class="btn btn-outline btn-sm" style="flex:1;margin:0;">🎲 추천 수식 자동 입력</button>
-            <button type="button" id="btn-fl-confirm-secret" class="btn btn-gold btn-sm" style="flex:1;margin:0;">✅ 내 수식 출제 완료</button>
+            <button type="button" id="btn-fl-rand-secret" class="btn btn-outline btn-sm" style="flex:1;margin:0;">🎲 추천
+              수식 자동 입력</button>
+            <button type="button" id="btn-fl-confirm-secret" class="btn btn-gold btn-sm" style="flex:1;margin:0;">✅ 내 수식
+              출제 완료</button>
           </div>
           <div id="fl-setup-err" class="error-msg hidden" style="width:100%;"></div>
         </div>
@@ -556,7 +597,8 @@
       <div id="ex-stocks" class="ex-stocks-list"></div>
       <div class="ex-footer">
         <div id="ex-rank" class="ex-rank-strip"></div>
-        <button type="button" id="btn-ex-next" class="btn btn-gold" style="padding:11px;width:100%;">📈 장 마감 · 다음 라운드</button>
+        <button type="button" id="btn-ex-next" class="btn btn-gold" style="padding:11px;width:100%;">📈 장 마감 · 다음
+          라운드</button>
       </div>
     </section>
 
@@ -569,7 +611,8 @@
       <div class="d1-hud">
         <span class="round-pill" id="rr-aim">🎯 조준: 나</span>
         <span class="phase-pill" id="rr-swap-gauge">조작 게이지 0/6</span>
-        <span class="chip-pill" style="font-size:12px;">크레딧 <strong id="rr-credits" style="color:#f7df8c;">10</strong></span>
+        <span class="chip-pill" style="font-size:12px;">크레딧 <strong id="rr-credits"
+            style="color:#f7df8c;">10</strong></span>
       </div>
 
       <div id="rr-players" class="rr-players-row"></div>
@@ -635,7 +678,8 @@
       <div class="d1-hud">
         <span class="round-pill" id="h13-round">R1 / 14</span>
         <span class="phase-pill" id="h13-refill">세트 1 (R1~7)</span>
-        <span class="chip-pill" style="font-size:12px;">내 벌점 <strong id="h13-my-pen" style="color:#ff6b6b;">0</strong></span>
+        <span class="chip-pill" style="font-size:12px;">내 벌점 <strong id="h13-my-pen"
+            style="color:#ff6b6b;">0</strong></span>
       </div>
 
       <!-- 3 Pedestals -->
@@ -659,7 +703,8 @@
           <button type="button" class="rb-target" data-color="green">🟢 초록에 올리기</button>
           <button type="button" class="rb-target" data-color="blue">🔵 파랑에 올리기</button>
         </div>
-        <button type="button" id="btn-h13-submit" class="btn btn-gold" style="padding:11px;" disabled>선택 완료 · 동시 제출</button>
+        <button type="button" id="btn-h13-submit" class="btn btn-gold" style="padding:11px;" disabled>선택 완료 · 동시
+          제출</button>
       </div>
     </section>
 
@@ -750,8 +795,10 @@
 
       <div id="host-controls" class="lobby-actions hidden">
         <div class="ai-manage-row">
-          <button type="button" id="btn-add-ai" class="btn btn-outline btn-sm" style="flex:1;margin:0;">🤖 AI +1 추가</button>
-          <button type="button" id="btn-remove-ai" class="btn btn-dark btn-sm" style="flex:1;margin:0;">AI -1 빼기</button>
+          <button type="button" id="btn-add-ai" class="btn btn-outline btn-sm" style="flex:1;margin:0;">🤖 AI +1
+            추가</button>
+          <button type="button" id="btn-remove-ai" class="btn btn-dark btn-sm" style="flex:1;margin:0;">AI -1
+            빼기</button>
         </div>
         <button id="btn-start-multi" class="btn btn-gold btn-lg">🚀 게임 시작하기</button>
         <div id="host-start-hint" class="muted center-text hidden">친구를 초대하거나 AI를 1명 이상 추가해 주세요 (최소 2인)</div>
@@ -838,12 +885,19 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 1 / 4 · 9칸 등식 조건</div>
               <h3 class="slide-title">숨겨진 9칸 수식을 맞히세요</h3>
-              <p class="slide-desc">정답은 숫자(<code>0~9</code>)와 기호(<code>+ - × ÷ ^ =</code>)로 이루어진 <strong>정확히 9칸짜리 등식</strong>입니다. 연산 순서는 <strong>제곱(^) → ×÷ → +-</strong>이며, <code>0</code>으로 시작하는 수는 없습니다.</p>
+              <p class="slide-desc">정답은 숫자(<code>0~9</code>)와 기호(<code>+ - × ÷ ^ =</code>)로 이루어진 <strong>정확히 9칸짜리
+                  등식</strong>입니다. 연산 순서는 <strong>제곱(^) → ×÷ → +-</strong>이며, <code>0</code>으로 시작하는 수는 없습니다.</p>
               <div class="sim-stage">
                 <div class="fl-row" style="width:100%;">
-                  <div class="fl-cell g">2</div><div class="fl-cell g">^</div><div class="fl-cell g">5</div>
-                  <div class="fl-cell g">+</div><div class="fl-cell g">1</div><div class="fl-cell g">8</div>
-                  <div class="fl-cell g">=</div><div class="fl-cell g">5</div><div class="fl-cell g">0</div>
+                  <div class="fl-cell g">2</div>
+                  <div class="fl-cell g">^</div>
+                  <div class="fl-cell g">5</div>
+                  <div class="fl-cell g">+</div>
+                  <div class="fl-cell g">1</div>
+                  <div class="fl-cell g">8</div>
+                  <div class="fl-cell g">=</div>
+                  <div class="fl-cell g">5</div>
+                  <div class="fl-cell g">0</div>
                 </div>
                 <div class="muted" style="font-size:12px;">예시: 2⁵ + 18 = 32 + 18 = 50 (총 9칸!)</div>
               </div>
@@ -854,13 +908,22 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 2 / 4 · 🟩🟨🟥 신호등 판정</div>
               <h3 class="slide-title">색깔 힌트로 자리와 개수를 추리</h3>
-              <p class="slide-desc">제출한 9칸마다 신호등이 켜집니다. 정답에 있는 개수보다 <strong>초과해서 적은 중복 문자</strong>는 <strong>빨간불</strong>로 표시됩니다!</p>
+              <p class="slide-desc">제출한 9칸마다 신호등이 켜집니다. 정답에 있는 개수보다 <strong>초과해서 적은 중복 문자</strong>는
+                <strong>빨간불</strong>로 표시됩니다!
+              </p>
               <div class="sim-stage" style="gap:8px;">
-                <div style="font-size:11.5px;color:#bbb;">정답이 <strong>2^5+18=50</strong> 일 때 <strong>2^4+55=71</strong> 제출 시:</div>
+                <div style="font-size:11.5px;color:#bbb;">정답이 <strong>2^5+18=50</strong> 일 때 <strong>2^4+55=71</strong>
+                  제출 시:</div>
                 <div class="fl-row" style="width:100%;">
-                  <div class="fl-cell g">2</div><div class="fl-cell g">^</div><div class="fl-cell r">4</div>
-                  <div class="fl-cell g">+</div><div class="fl-cell y">5</div><div class="fl-cell y">5</div>
-                  <div class="fl-cell g">=</div><div class="fl-cell r">7</div><div class="fl-cell y">1</div>
+                  <div class="fl-cell g">2</div>
+                  <div class="fl-cell g">^</div>
+                  <div class="fl-cell r">4</div>
+                  <div class="fl-cell g">+</div>
+                  <div class="fl-cell y">5</div>
+                  <div class="fl-cell y">5</div>
+                  <div class="fl-cell g">=</div>
+                  <div class="fl-cell r">7</div>
+                  <div class="fl-cell y">1</div>
                 </div>
                 <div class="bet-tags">
                   <span class="btag" style="background:rgba(46,204,113,0.2);color:#5ee695;">🟩 자리+문자 일치</span>
@@ -877,9 +940,15 @@
               <p class="slide-desc">원작처럼 계산이 안 맞아도 <strong>9칸만 채우면 제출 가능</strong>합니다! 아래 버튼으로 더미 수식과 정답을 직접 테스트해보세요.</p>
               <div class="sim-stage">
                 <div id="fl-sim-row" class="fl-row" style="width:100%;">
-                  <div class="fl-cell">?</div><div class="fl-cell">?</div><div class="fl-cell">?</div>
-                  <div class="fl-cell">?</div><div class="fl-cell">?</div><div class="fl-cell">?</div>
-                  <div class="fl-cell">?</div><div class="fl-cell">?</div><div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
+                  <div class="fl-cell">?</div>
                 </div>
                 <div id="fl-sim-msg" class="muted" style="font-size:12px;">버튼을 눌러 신호등 반응을 확인해보세요!</div>
                 <div class="sim-btn-row">
@@ -893,7 +962,8 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 4 / 4 · 친구와 1:1 결승전</div>
               <h3 class="slide-title">초대 코드로 실시간 1:1 레이스!</h3>
-              <p class="slide-desc">상단 <strong>👥 친구 1:1</strong> 탭에서 <strong>방 만들기</strong>를 누르면 4자리 코드와 초대 링크가 생성됩니다. 서로 다른 9칸 수식을 두고 <strong>먼저 9칸 모두 초록불</strong>을 켜는 사람이 우승합니다!</p>
+              <p class="slide-desc">상단 <strong>👥 친구 1:1</strong> 탭에서 <strong>방 만들기</strong>를 누르면 4자리 코드와 초대 링크가 생성됩니다.
+                서로 다른 9칸 수식을 두고 <strong>먼저 9칸 모두 초록불</strong>을 켜는 사람이 우승합니다!</p>
               <div class="sim-stage">
                 <div class="fl-ai-bar" style="width:100%;margin:0;">
                   <span>🔥 친구 실시간 현황</span>
@@ -972,7 +1042,9 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 1 / 6 · 목표 &amp; 카드 구성</div>
               <h3 class="slide-title">35장 숫자 카드로 한계에 도전</h3>
-              <p class="slide-desc">카드 합이 <strong>한계 숫자 이하</strong>이면서 가장 가까운 사람이 팟(Pot)을 독식합니다. 칩이 0개가 되면 즉시 <strong>탈락</strong>하며 최후 1인이 우승합니다. (높은 숫자일수록 장수가 적고, <strong>-1 카드 7장</strong> 포함)</p>
+              <p class="slide-desc">카드 합이 <strong>한계 숫자 이하</strong>이면서 가장 가까운 사람이 팟(Pot)을 독식합니다. 칩이 0개가 되면 즉시
+                <strong>탈락</strong>하며 최후 1인이 우승합니다. (높은 숫자일수록 장수가 적고, <strong>-1 카드 7장</strong> 포함)
+              </p>
               <div class="sim-deck-grid">
                 <div class="sim-mini rare"><span class="n">7</span><span class="c">1장</span></div>
                 <div class="sim-mini rare"><span class="n">6</span><span class="c">2장</span></div>
@@ -990,16 +1062,32 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 2 / 6 · 한계 숫자 &amp; 1장 공개</div>
               <h3 class="slide-title">주사위를 굴리고 1장을 공개하세요</h3>
-              <p class="slide-desc"><strong>선(⭐)</strong>은 매 라운드 시계 방향으로 이동합니다. <strong>매 라운드마다</strong> 8면체 주사위(5~12)로 한계 숫자가 새로 정해지며, 기본 베팅(R1~2: 1칩, R3~4: 2칩…) 후 3장 중 <strong>1장을 공개</strong>합니다.</p>
+              <p class="slide-desc"><strong>선(⭐)</strong>은 매 라운드 시계 방향으로 이동합니다. <strong>매 라운드마다</strong> 8면체 주사위(5~12)로
+                한계 숫자가 새로 정해지며, 기본 베팅(R1~2: 1칩, R3~4: 2칩…) 후 3장 중 <strong>1장을 공개</strong>합니다.</p>
               <div class="sim-stage">
                 <div class="sim-dice-row">
                   <div class="sim-dice" id="sim-dice-val">10</div>
                   <button type="button" class="sim-btn" id="btn-sim-dice">🎲 주사위 굴리기</button>
                 </div>
                 <div class="sim-flip-row" id="sim-flip-row">
-                  <div class="flip-card" data-val="5"><div class="flip-inner"><div class="flip-front">5<small>터치해 공개</small></div><div class="flip-back">5<small>공개됨!</small></div></div></div>
-                  <div class="flip-card" data-val="4"><div class="flip-inner"><div class="flip-front">4<small>터치해 공개</small></div><div class="flip-back">4<small>공개됨!</small></div></div></div>
-                  <div class="flip-card" data-val="-1"><div class="flip-inner"><div class="flip-front minus">-1<small>터치해 공개</small></div><div class="flip-back minus">-1<small>공개됨!</small></div></div></div>
+                  <div class="flip-card" data-val="5">
+                    <div class="flip-inner">
+                      <div class="flip-front">5<small>터치해 공개</small></div>
+                      <div class="flip-back">5<small>공개됨!</small></div>
+                    </div>
+                  </div>
+                  <div class="flip-card" data-val="4">
+                    <div class="flip-inner">
+                      <div class="flip-front">4<small>터치해 공개</small></div>
+                      <div class="flip-back">4<small>공개됨!</small></div>
+                    </div>
+                  </div>
+                  <div class="flip-card" data-val="-1">
+                    <div class="flip-inner">
+                      <div class="flip-front minus">-1<small>터치해 공개</small></div>
+                      <div class="flip-back minus">-1<small>공개됨!</small></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1008,7 +1096,9 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 3 / 6 · 1차 &amp; 2차 베팅</div>
               <h3 class="slide-title">심리전으로 칩을 불리세요</h3>
-              <p class="slide-desc">선부터 시계 방향으로 베팅합니다. <strong>최소 칩 보유자의 총 잔액</strong>을 넘는 베팅은 불가하며, 1명을 남기고 전원 <strong>포기(Fold)</strong>하면 즉시 팟을 획득합니다.</p>
+              <p class="slide-desc">선부터 시계 방향으로 베팅합니다. <strong>최소 칩 보유자의 총 잔액</strong>을 넘는 베팅은 불가하며, 1명을 남기고 전원
+                <strong>포기(Fold)</strong>하면 즉시 팟을 획득합니다.
+              </p>
               <div class="sim-stage">
                 <div class="bet-anim-box">
                   <div class="bet-actor">나 <span class="chip-fly">🪙 +3</span></div>
@@ -1027,7 +1117,8 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 4 / 6 · HIT / STAY 체험</div>
               <h3 class="slide-title">버스트 위기! HIT 할까요?</h3>
-              <p class="slide-desc"><strong>HIT</strong>으로 뽑은 카드는 <strong>전체 공개</strong>되며, 전원 <strong>STAY</strong>하거나 덱이 소진될 때까지 반복됩니다. 현재 <strong>11(버스트)</strong>! <strong>HIT</strong>을 눌러 <code>-1</code>로 생존해보세요.</p>
+              <p class="slide-desc"><strong>HIT</strong>으로 뽑은 카드는 <strong>전체 공개</strong>되며, 전원 <strong>STAY</strong>하거나
+                덱이 소진될 때까지 반복됩니다. 현재 <strong>11(버스트)</strong>! <strong>HIT</strong>을 눌러 <code>-1</code>로 생존해보세요.</p>
               <div class="sim-stage">
                 <div class="sim-status-bar">
                   <span>한계: <strong>10</strong></span>
@@ -1050,7 +1141,8 @@
             <div class="guide-slide">
               <div class="slide-eyebrow">STEP 5 / 6 · 승패 &amp; 동점 규칙</div>
               <h3 class="slide-title">동점이면 카드 수가 많은 쪽이 승!</h3>
-              <p class="slide-desc">한계 이하 동점 시 <strong>보유 카드 장수가 많은 쪽</strong>이 승리하며, 장수까지 같으면 팟을 나눕니다. <strong>전원 버스트</strong> 시에는 팟이 다음 라운드로 이월됩니다.</p>
+              <p class="slide-desc">한계 이하 동점 시 <strong>보유 카드 장수가 많은 쪽</strong>이 승리하며, 장수까지 같으면 팟을 나눕니다. <strong>전원
+                  버스트</strong> 시에는 팟이 다음 라운드로 이월됩니다.</p>
               <div class="sim-stage">
                 <div class="tie-compare">
                   <div class="tie-side win">
@@ -1076,11 +1168,13 @@
               <div class="sim-stage">
                 <div class="auto-sim-head">
                   <span id="auto-phase-badge" class="round-pill">대기 중</span>
-                  <span class="pot-label" style="color:#5ee695;font-weight:800;">POT <span id="auto-pot">4</span> · 한계 10</span>
+                  <span class="pot-label" style="color:#5ee695;font-weight:800;">POT <span id="auto-pot">4</span> · 한계
+                    10</span>
                 </div>
                 <div class="auto-players" id="auto-players"></div>
                 <div class="auto-log" id="auto-log">▶ 아래 재생 버튼을 눌러 시뮬레이션을 시작하세요</div>
-                <button type="button" class="btn btn-gold" id="btn-auto-sim" style="padding:10px;width:100%;">▶ 1라운드 자동 시뮬레이션 재생</button>
+                <button type="button" class="btn btn-gold" id="btn-auto-sim" style="padding:10px;width:100%;">▶ 1라운드 자동
+                  시뮬레이션 재생</button>
               </div>
             </div>
           </div>
@@ -1095,11 +1189,12 @@
     </div>
   </div>
 
-  <script src="/static/app.js"></script>
-  <script src="/static/games_day1.js"></script>
-  <script src="/static/games_day2.js"></script>
-  <script src="/static/games_day3.js"></script>
-  <script src="/static/games_final.js"></script>
-  <script src="/static/mp_hub.js"></script>
+  <script src="/static/app.js?v=4.0"></script>
+  <script src="/static/games_day1.js?v=4.0"></script>
+  <script src="/static/games_day2.js?v=4.0"></script>
+  <script src="/static/games_day3.js?v=4.0"></script>
+  <script src="/static/games_final.js?v=4.0"></script>
+  <script src="/static/mp_hub.js?v=4.0"></script>
 </body>
+
 </html>

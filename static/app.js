@@ -157,7 +157,7 @@ async function sendAction(payload) {
       state = msg.data;
       render();
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function leaveRoom() {
@@ -890,7 +890,7 @@ function ensureAudio() {
     if (Ctx) audioCtx = new Ctx();
   }
   if (audioCtx && audioCtx.state === "suspended") {
-    audioCtx.resume().catch(() => {});
+    audioCtx.resume().catch(() => { });
   }
   return audioCtx;
 }
@@ -1044,7 +1044,7 @@ function refreshResumeCard() {
       };
       return;
     }
-  } catch (_) {}
+  } catch (_) { }
   btn.classList.add("hidden");
 }
 refreshResumeCard();
@@ -1250,42 +1250,51 @@ function renderHub() {
   grid.innerHTML = "";
   filtered.forEach((g) => {
     const vis = GAME_VISUALS[g.id];
-    const row = document.createElement("div");
-    row.className = "hub-row-card" + (g.playable ? " playable" : "");
-    if (vis) row.style.setProperty("--tile-accent", vis.accent);
+    const card = document.createElement("article");
+    card.className = "hub-card" + (g.playable ? " playable" : " upcoming");
+    if (vis) card.style.setProperty("--tile-accent", vis.accent);
 
     const iconSvg = vis
       ? vis.svg
-      : `<svg viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="2.5"/></svg>`;
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="2.5"/></svg>`;
 
-    row.innerHTML = `
-      <div class="hub-row-icon">${iconSvg}</div>
-      <div class="hub-row-mid">
-        <div class="hub-row-title">${g.name} <span class="tile-tag">${g.catLabel} · ${g.day}</span></div>
-        <div class="hub-row-sub">${g.desc}</div>
+    const statusBadge = g.playable
+      ? `<span class="hub-card-live">● MULTI</span>`
+      : `<span class="hub-card-soon-tag">${g.progress}%</span>`;
+
+    card.innerHTML = `
+      <div class="hub-card-media" aria-hidden="true">
+        <div class="hub-card-top-meta">
+          <span class="hub-card-cat">${g.catLabel} · ${g.day}</span>
+          ${statusBadge}
+        </div>
+        <div class="hub-card-emblem">${iconSvg}</div>
       </div>
-      <div class="hub-row-right">
+      <header class="hub-card-head">
+        <h3><button type="button" class="hub-card-trigger">${g.name}</button></h3>
+      </header>
+      <p class="hub-card-desc">${g.desc}</p>
+      <footer class="hub-card-footer">
         <button type="button" class="hub-info-pill">📖 설명</button>
-        ${g.playable ? `<button type="button" class="hub-play-pill">플레이 ▶</button>` : `<span class="hub-soon-pill">준비중</span>`}
-      </div>
+        ${g.playable
+          ? `<button type="button" class="hub-play-pill">플레이 ▶</button>`
+          : `<span class="hub-soon-pill">준비중</span>`}
+      </footer>
     `;
 
-    row.querySelector(".hub-info-pill").onclick = (e) => {
+    card.querySelector(".hub-card-trigger").onclick = () => openGameInfoSheet(g);
+    card.querySelector(".hub-info-pill").onclick = (e) => {
       e.stopPropagation();
       openGameInfoSheet(g);
     };
-    const pBtn = row.querySelector(".hub-play-pill");
+    const pBtn = card.querySelector(".hub-play-pill");
     if (pBtn) {
       pBtn.onclick = (e) => {
         e.stopPropagation();
         openGameLaunch(g);
       };
     }
-    row.onclick = () => {
-      if (g.playable) openGameInfoSheet(g);
-      else openGameInfoSheet(g);
-    };
-    grid.appendChild(row);
+    grid.appendChild(card);
   });
 }
 
