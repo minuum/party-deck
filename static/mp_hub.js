@@ -35,6 +35,7 @@ function openMpGameEntry(gameType, title, dayLabel, desc) {
   mpData = null;
   mpLastSig = "";
   $("mp-nav-tag").textContent = title;
+  $("screen-mp").setAttribute("data-theme", gameType || "");
   $("mp-entry-day").textContent = dayLabel;
   $("mp-entry-title").textContent = title;
   $("mp-entry-desc").textContent = desc;
@@ -178,6 +179,7 @@ function renderMp() {
   if (!mpData) return;
   const d = mpData;
   const isHost = d.viewer_id === d.host_id;
+  $("screen-mp").setAttribute("data-theme", d.game_type || "");
   $("mp-nav-tag").textContent = `${d.meta.title} · ${d.room_id}`;
   $("btn-mp-save").classList.remove("hidden");
   $("btn-mp-end").classList.toggle("hidden", !(isHost && d.phase === "PLAYING"));
@@ -240,13 +242,24 @@ function mpDoneFooter(ctrl, isHost) {
   `;
 }
 
-// --- 1. 양자택일 ---
+// --- 1. 양자택일 (with Live Majority Tug-of-War Meter) ---
 function renderMpChoice(d, me, board, ctrl, isHost) {
   $("mp-hud-round").textContent = `R${d.round} / ${d.state.max_rounds}`;
   $("mp-hud-mid").textContent = `공동상금 ${(d.state.prize * 0.5).toFixed(1)}억`;
   $("mp-hud-right").textContent = `내 점수 ${me.score}`;
+  const need = Math.floor(d.players.length / 2) + 1;
+  const pubLast = d.players.filter((p) => p.last === "🤝공공").length;
+  const pubPct = Math.round((pubLast / Math.max(1, d.players.length)) * 100);
   const sorted = [...d.players].sort((a, b) => b.score - a.score);
-  board.innerHTML = `<div class="d1-score-grid">${sorted.map((p, i) => `
+  board.innerHTML = `
+    <div class="choice-meter">
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:800;">
+        <span style="color:#4dabf7;">🤝 공공의 이익 (과반 ${need}명)</span>
+        <span style="color:#ff6b6b;">😈 개인의 이익</span>
+      </div>
+      <div class="choice-meter-bar"><div class="choice-meter-pub" style="width:${pubLast ? pubPct : 50}%"></div></div>
+    </div>
+    <div class="d1-score-grid">${sorted.map((p, i) => `
     <div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}">
       <span>${i + 1}위 ${p.name} <small>${p.submitted ? "✅" : p.last}</small></span>
       <strong>${p.score}점</strong>
@@ -262,7 +275,7 @@ function renderMpChoice(d, me, board, ctrl, isHost) {
   }
 }
 
-// --- 2. 무거운 13 ---
+// --- 2. 무거운 13 (with Danger Weight Gauge Bars) ---
 function renderMpHeavy13(d, me, board, ctrl, isHost) {
   $("mp-hud-round").textContent = `R${d.round} / 14`;
   $("mp-hud-mid").textContent = d.round <= 7 ? "세트1" : "세트2";
@@ -270,9 +283,12 @@ function renderMpHeavy13(d, me, board, ctrl, isHost) {
   const peds = d.state.pedestals;
   board.innerHTML = `
     <div class="h13-pedestals">
-      ${[["red", "🔴 빨강"], ["green", "🟢 초록"], ["blue", "🔵 파랑"]].map(([k, l]) => `
-        <div class="ped-box ${k}"><span class="ped-name">${l}</span><span class="ped-sum">${peds[k].sum}</span><span class="ped-cnt">${peds[k].count}장 / 13</span></div>
-      `).join("")}
+      ${[["red", "🔴 빨강"], ["green", "🟢 초록"], ["blue", "🔵 파랑"]].map(([k, l]) => {
+        const s = peds[k].sum;
+        const pct = Math.min(100, Math.round((s / 13) * 100));
+        const lvl = s >= 11 ? "danger" : s >= 8 ? "warn" : "";
+        return `<div class="ped-box ${k}"><span class="ped-name">${l}</span><span class="ped-sum">${s}</span><span class="ped-cnt">${peds[k].count}장 / 13</span><div class="ped-meter"><div class="ped-meter-fill ${lvl}" style="width:${pct}%"></div></div></div>`;
+      }).join("")}
     </div>
     <div class="d1-score-grid">
       ${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name} <small>${p.submitted ? "✅" : p.last}</small></span><strong style="color:#ff8a8a;">벌점 ${p.penalty}</strong></div>`).join("")}
@@ -289,7 +305,7 @@ function renderMpHeavy13(d, me, board, ctrl, isHost) {
     <button type="button" class="btn btn-gold" style="padding:10px;" ${mpSel.h13Card === null || !mpSel.h13Chip ? "disabled" : ""} onclick="mpSend({card:mpSel.h13Card,chip:mpSel.h13Chip,rb_color:mpSel.h13Rb});mpSel.h13Card=null;mpSel.h13Chip=null;">🪨 동시 제출</button>`;
 }
 
-// --- 3. 미스터리 거래소 ---
+// --- 3. 미스터리 거래소 (with Live SVG Trend Sparklines) ---
 function renderMpExchange(d, me, board, ctrl, isHost) {
   $("mp-hud-round").textContent = `R${d.round} / 10`;
   $("mp-hud-mid").textContent = `현금 ${(me.cash || 0).toLocaleString()}`;
@@ -298,8 +314,12 @@ function renderMpExchange(d, me, board, ctrl, isHost) {
     const q = (me.holdings && me.holdings[s.id]) || 0;
     const pct = s.prev ? Math.round(((s.price - s.prev) / s.prev) * 100) : 0;
     const chg = pct > 0 ? `<span class="up">▲+${pct}%</span>` : pct < 0 ? `<span class="down">▼${pct}%</span>` : `<span>0%</span>`;
+    const strokeCol = pct > 0 ? "#ff6b6b" : pct < 0 ? "#4dabf7" : "#888";
+    const yEnd = pct > 0 ? 4 : pct < 0 ? 20 : 12;
+    const spark = `<svg class="stock-spark" viewBox="0 0 56 24"><polyline fill="none" stroke="${strokeCol}" stroke-width="2" points="2,14 18,12 36,${pct > 0 ? 15 : 9} 54,${yEnd}"/></svg>`;
     return `<div class="stock-row">
       <div class="stock-info"><div class="stock-name">${s.name} ${q > 0 ? `<span class="stock-qty">${q}주</span>` : ""}</div><div class="stock-price">${s.price.toLocaleString()}원 ${chg}</div></div>
+      ${spark}
       <div class="stock-btns">
         <button class="st-act buy" ${d.phase === "DONE" || me.ready || me.cash < s.price ? "disabled" : ""} onclick="mpSend({action:'buy1',stock_id:'${s.id}'})">+1</button>
         <button class="st-act all" ${d.phase === "DONE" || me.ready || me.cash < s.price ? "disabled" : ""} onclick="mpSend({action:'buyMax',stock_id:'${s.id}'})">MAX</button>
@@ -313,19 +333,41 @@ function renderMpExchange(d, me, board, ctrl, isHost) {
     ${me.ready ? `<div class="wait-pill">⏳ 거래 완료! 다른 플레이어 마감 대기 중...</div>` : `<button type="button" class="btn btn-gold" style="padding:10px;" onclick="mpSend({action:'ready'})">📈 이번 라운드 거래 완료</button>`}`;
 }
 
-// --- 4. 러시안 룰렛 ---
+// --- 4. 러시안 룰렛 (Circular 16-Chamber Interactive SVG Revolver Cylinder!) ---
 function renderMpRoulette(d, me, board, ctrl, isHost) {
   const aimed = d.players[d.state.aim_idx];
   $("mp-hud-round").textContent = `🎯 ${aimed ? aimed.name : "-"}`;
   $("mp-hud-mid").textContent = `조작 ${d.state.swap_gauge}/6`;
   $("mp-hud-right").textContent = `크레딧 ${me.credits}C`;
+
+  const cx = 110, cy = 110, r = 82;
+  const nodes = d.state.chambers.map((c, i) => {
+    const angle = ((i / 16) * Math.PI * 2) - Math.PI / 2;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    const isSel = mpSel.rrSlot === i;
+    const fill = c.known ? (c.bullet ? "#c0392b" : "#1e6b44") : "#1a1b24";
+    const stroke = isSel ? "#f7df8c" : (c.known ? (c.bullet ? "#ff6b6b" : "#5ee695") : "rgba(255,255,255,0.22)");
+    const label = c.known ? (c.bullet ? "●" : "○") : (i + 1);
+    return `<g class="rr-chamber-node" onclick="mpSel.rrSlot=${i};renderMp()">
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isSel ? 13 : 11}" fill="${fill}" stroke="${stroke}" stroke-width="${isSel ? 2.5 : 1.5}"/>
+      <text x="${x.toFixed(1)}" y="${(y + 3.5).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#fff">${label}</text>
+    </g>`;
+  }).join("");
+
+  const cylSvg = `<div class="rr-cylinder-wrap">
+    <svg class="rr-cylinder-svg" viewBox="0 0 220 220">
+      <circle cx="110" cy="110" r="98" fill="#101016" stroke="rgba(255,92,92,0.4)" stroke-width="2"/>
+      <circle cx="110" cy="110" r="34" fill="#181822" stroke="rgba(212,175,55,0.45)" stroke-width="1.5"/>
+      <text x="110" y="106" text-anchor="middle" font-size="10" font-weight="800" fill="#aaa">선택 약실</text>
+      <text x="110" y="123" text-anchor="middle" font-size="16" font-weight="900" fill="#f7df8c">#${mpSel.rrSlot + 1}</text>
+      ${nodes}
+    </svg>
+  </div>`;
+
   board.innerHTML = `
     <div class="rr-players-row">${d.players.map((p) => `<div class="rr-p ${p.dead ? "dead" : p.is_aimed ? "aimed" : ""}">${p.is_turn ? "⚡" : ""}${p.name}${p.dead ? "💀" : p.passed ? "✋" : ""}</div>`).join("")}</div>
-    <div class="rr-chambers-grid">${d.state.chambers.map((c, i) => {
-      const ow = d.players[(d.state.aim_idx + i) % d.players.length].name.slice(0, 3);
-      const ic = c.known ? (c.bullet ? "🔴" : "⚪") : "❓";
-      return `<div class="rr-slot ${mpSel.rrSlot === i ? "selected" : ""} ${c.known ? (c.bullet ? "bullet" : "safe") : ""} ${c.fired ? "fired" : ""}" onclick="mpSel.rrSlot=${i};renderMp()"><div>#${i + 1} ${ic}${c.priv ? "🕵️" : ""}</div><div style="font-size:9px;opacity:0.7;">${ow}</div></div>`;
-    }).join("")}</div>`;
+    ${cylSvg}`;
   if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
   if (!me.is_turn) {
     ctrl.innerHTML = `<div class="wait-pill">⏳ 다른 플레이어의 차례입니다...</div>`;
@@ -344,7 +386,7 @@ function renderMpRoulette(d, me, board, ctrl, isHost) {
     </div>`;
 }
 
-// --- 5. 보석 암시장 ---
+// --- 5. 보석 암시장 (with Faceted Jewel Cards) ---
 function renderMpGemMarket(d, me, board, ctrl, isHost) {
   $("mp-hud-round").textContent = `R${d.round} / 5`;
   $("mp-hud-mid").textContent = `🤫 마니또: ${me.manitto_name || "-"}`;
@@ -358,7 +400,7 @@ function renderMpGemMarket(d, me, board, ctrl, isHost) {
     return;
   }
   ctrl.innerHTML = `
-    <div class="h13-row">${me.hand.map((c, idx) => `<button class="gm-card ${c.isBomb ? "bomb" : ""} ${mpSel.gmCard === idx ? "selected" : ""}" onclick="mpSel.gmCard=${idx};renderMp()"><span>${c.label}</span><small>${c.pts > 0 ? `+${c.pts}` : c.pts}</small></button>`).join("")}</div>
+    <div class="h13-row">${me.hand.map((c, idx) => `<button class="gm-card ${c.isBomb ? "bomb" : c.id} ${mpSel.gmCard === idx ? "selected" : ""}" onclick="mpSel.gmCard=${idx};renderMp()"><span>${c.label}</span><small>${c.pts > 0 ? `+${c.pts}` : c.pts}</small></button>`).join("")}</div>
     <div class="h13-row">${d.players.map((p, idx) => p.id === d.viewer_id ? "" : `<button class="h13-chip ${mpSel.gmTarget === idx ? "selected" : ""}" onclick="mpSel.gmTarget=${idx};renderMp()">${p.name}${idx === me.manitto_idx ? "(마니또)" : ""}</button>`).join("")}</div>
     <button class="btn btn-gold" style="padding:10px;" ${mpSel.gmCard === null || mpSel.gmTarget === null ? "disabled" : ""} onclick="mpSend({card_idx:mpSel.gmCard,target_idx:mpSel.gmTarget});mpSel.gmCard=null;mpSel.gmTarget=null;">🤝 교환 제출</button>`;
 }

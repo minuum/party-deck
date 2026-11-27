@@ -2107,3 +2107,163 @@ html, body {
   background: rgba(212, 175, 55, 0.16);
 }
 .pb-bank .pig { font-size: 18px; }
+
+/* =========================================================================
+   v3.1 IMPECCABLE VISUAL OVERHAUL — Per-Game Themes, SVG Icons & Graphics
+   ========================================================================= */
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hub Tile with Bespoke SVG Emblem */
+.game-tile {
+  position: relative;
+  overflow: hidden;
+}
+.game-tile.playable {
+  grid-column: span 1;
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.06) 0%, rgba(14, 14, 21, 0.92) 100%);
+  border: 1px solid var(--tile-accent, rgba(212, 175, 55, 0.55));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.game-tile.playable.featured-hero {
+  grid-column: span 2;
+}
+.game-tile.playable::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--tile-accent, #d4af37);
+}
+.tile-head-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.tile-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--tile-accent, rgba(212, 175, 55, 0.4));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.tile-icon-box svg {
+  width: 22px;
+  height: 22px;
+}
+.game-tile.playable .tile-title {
+  font-size: 15.5px;
+  color: #fff;
+}
+
+/* Per-Game Atmospheric Themes on #screen-mp */
+#screen-mp[data-theme="choice"] {
+  --mp-accent: #4dabf7;
+  --mp-glow: rgba(77, 171, 247, 0.14);
+}
+#screen-mp[data-theme="heavy_13"] {
+  --mp-accent: #ff922b;
+  --mp-glow: rgba(255, 146, 43, 0.14);
+}
+#screen-mp[data-theme="mystery_exchange"] {
+  --mp-accent: #20c997;
+  --mp-glow: rgba(32, 201, 151, 0.14);
+}
+#screen-mp[data-theme="russian_roulette"] {
+  --mp-accent: #ff5c5c;
+  --mp-glow: rgba(255, 92, 92, 0.15);
+}
+#screen-mp[data-theme="gem_market"] {
+  --mp-accent: #cc5de8;
+  --mp-glow: rgba(204, 93, 232, 0.15);
+}
+#screen-mp[data-theme="piggy_bank"] {
+  --mp-accent: #f06595;
+  --mp-glow: rgba(240, 101, 149, 0.15);
+}
+#screen-mp[data-theme] .table-banner {
+  border-color: var(--mp-accent, var(--gold));
+  background: var(--mp-glow, rgba(212, 175, 55, 0.08));
+}
+#screen-mp[data-theme] .round-pill {
+  background: var(--mp-glow, rgba(212, 175, 55, 0.2));
+  color: var(--mp-accent, var(--gold-bright));
+  border: 1px solid var(--mp-accent, rgba(212, 175, 55, 0.4));
+}
+
+/* Heavy 13 Visual Weight Gauge Bars */
+.ped-meter {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+.ped-meter-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: #5ee695;
+  transition: width 0.3s ease;
+}
+.ped-meter-fill.warn { background: #fcc419; }
+.ped-meter-fill.danger { background: #ff5c5c; }
+
+/* Mystery Exchange SVG Sparkline */
+.stock-spark {
+  width: 56px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* Russian Roulette Circular SVG Cylinder */
+.rr-cylinder-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2px 0;
+}
+.rr-cylinder-svg {
+  width: 214px;
+  height: 214px;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.65));
+}
+.rr-chamber-node {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.rr-chamber-node:hover { opacity: 0.88; }
+
+/* Choice Majority Tug-of-War Meter */
+.choice-meter {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.choice-meter-bar {
+  height: 10px;
+  border-radius: 99px;
+  background: rgba(235, 87, 87, 0.4);
+  overflow: hidden;
+  position: relative;
+}
+.choice-meter-pub {
+  height: 100%;
+  background: linear-gradient(90deg, #20c997, #4dabf7);
+  transition: width 0.35s ease;
+}
+
+/* Gem Market Faceted Jewel Cards */
+.gm-card.dia { background: linear-gradient(150deg, #123447, #0b1b26); border-color: #4dabf7; }
+.gm-card.gold { background: linear-gradient(150deg, #3d2e0f, #1a1306); border-color: #f3d273; }
+.gm-card.silver { background: linear-gradient(150deg, #2a2e38, #14161c); border-color: #ced4da; }
+.gm-card.bronze { background: linear-gradient(150deg, #3a2316, #1b100a); border-color: #e89f6b; }

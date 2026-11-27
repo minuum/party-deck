@@ -1110,6 +1110,41 @@ const GAME_CATALOG = [
 
 let currentHubCat = "all";
 
+const GAME_VISUALS = {
+  hit_stay: {
+    accent: "#d4af37",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f7df8c" stroke-width="1.8"><rect x="3" y="4" width="11" height="15" rx="2"/><rect x="10" y="6" width="11" height="15" rx="2" fill="#181214" stroke="#ff6b6b"/><path d="M13.5 13.5h4" stroke="#ff6b6b" stroke-width="2"/></svg>`,
+  },
+  formula_light: {
+    accent: "#2ecc71",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><rect x="7" y="2" width="10" height="20" rx="3" fill="#141820" stroke="#5ee695"/><circle cx="12" cy="7" r="2" fill="#ff6b6b" stroke="none"/><circle cx="12" cy="12" r="2" fill="#f7df8c" stroke="none"/><circle cx="12" cy="17" r="2" fill="#2ecc71" stroke="none"/></svg>`,
+  },
+  choice: {
+    accent: "#4dabf7",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="1.8"><path d="M12 4v16M5 20h14M4 8l8-2 8 2"/><path d="M4 8l-1.5 5h3L4 8zm16 0l-1.5 5h3L20 8z" stroke="#ff6b6b"/></svg>`,
+  },
+  heavy_13: {
+    accent: "#ff922b",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#ff922b" stroke-width="1.8"><path d="M4 19h16M6 15h12l-1-4H7l-1 4zm2-4h8l-1-4H9l-1 4z"/><text x="12" y="14.5" text-anchor="middle" font-size="6.5" font-weight="900" fill="#fff" stroke="none">13</text></svg>`,
+  },
+  mystery_exchange: {
+    accent: "#20c997",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#20c997" stroke-width="1.9"><path d="M3 18l5-6 4 3 6-8 3 2"/><path d="M18 7h3v3"/></svg>`,
+  },
+  russian_roulette: {
+    accent: "#ff5c5c",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="7" r="1.7" fill="#ff6b6b"/><circle cx="16.3" cy="9.5" r="1.5"/><circle cx="16.3" cy="14.5" r="1.5"/><circle cx="12" cy="17" r="1.7" fill="#ff6b6b"/><circle cx="7.7" cy="14.5" r="1.5"/><circle cx="7.7" cy="9.5" r="1.5"/></svg>`,
+  },
+  gem_market: {
+    accent: "#cc5de8",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#da77f2" stroke-width="1.8"><polygon points="6,4 18,4 22,10 12,21 2,10"/><path d="M2 10h20M12 21L8 10l4-6 4 6-4 11z"/></svg>`,
+  },
+  piggy_bank: {
+    accent: "#f06595",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f783ac" stroke-width="1.8"><rect x="4" y="7" width="16" height="11" rx="5"/><circle cx="9.5" cy="12" r="1.5" fill="#fff" stroke="none"/><circle cx="14.5" cy="12" r="1.5" fill="#333" stroke="#fff"/><path d="M10 4h4" stroke-width="2"/></svg>`,
+  },
+};
+
 function renderHub() {
   const grid = $("hub-games-grid");
   if (!grid) return;
@@ -1121,21 +1156,28 @@ function renderHub() {
     if (currentHubCat === "all") return true;
     if (currentHubCat === "playable") return g.playable;
     return g.cat === currentHubCat;
-  });
+  }).sort((a, b) => (b.playable ? 1 : 0) - (a.playable ? 1 : 0));
 
   grid.innerHTML = "";
   filtered.forEach((g) => {
+    const vis = GAME_VISUALS[g.id];
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "game-tile" + (g.playable ? " playable" : "");
+    btn.className = "game-tile" + (g.playable ? " playable" : "") + (g.id === "hit_stay" ? " featured-hero" : "");
+    if (vis) btn.style.setProperty("--tile-accent", vis.accent);
+
+    const iconHtml = vis ? `<div class="tile-icon-box">${vis.svg}</div>` : "";
     btn.innerHTML = `
       <div class="tile-top">
         <span class="tile-tag">${g.catLabel} · ${g.day}</span>
-        <span class="st-badge ${g.playable ? "ok" : "warn"}">${g.playable ? "플레이 ▶" : `${g.progress}%`}</span>
+        <span class="st-badge ${g.playable ? "ok" : "warn"}">${g.playable ? "멀티 ▶" : `${g.progress}%`}</span>
       </div>
-      <div class="tile-title">${g.name}</div>
+      <div class="tile-head-row">
+        ${iconHtml}
+        <div class="tile-title">${g.name}</div>
+      </div>
       <div class="tile-desc">${g.desc}</div>
-      <div class="tile-bar"><div class="tile-bar-fill" style="width:${g.progress}%"></div></div>
+      <div class="tile-bar"><div class="tile-bar-fill" style="width:${g.progress}%;background:${vis ? vis.accent : "var(--green)"}"></div></div>
     `;
     btn.onclick = () => {
       if (g.playable && g.id === "hit_stay") {
