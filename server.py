@@ -368,6 +368,8 @@ class GameRoom:
             "carry_pot": self.carry_pot,
             "ante": self.ante,
             "deck_remaining": len(self.deck),
+            "ai_pending": self.is_ai_pending(),
+            "solo_mode": all(p.is_ai for p in self.players if p.id != viewer_id),
             "current_bet": self.current_bet,
             "max_round_bet": self.max_round_bet,
             "players": players_data,

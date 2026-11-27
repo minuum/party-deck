@@ -159,29 +159,65 @@ async function mpSend(payload) {
   } catch (_) {}
 }
 
-function mpStartPoll() {
-  mpStopPoll();
-  mpPollTimer = setInterval(async () => {
-    if (!mpRoomId || !mpPlayerId || mpPollBusy) return;
-    mpPollBusy = true;
-    try {
-      const res = await fetch(`/api/mp/${mpRoomId}?player_id=${encodeURIComponent(mpPlayerId)}`);
-      if (res.ok) {
-        const out = await res.json();
-        if (out.data) mpApply(out.data, false);
-      }
-    } catch (_) {} finally { mpPollBusy = false; }
-  }, 550);
+function mpGetPollInterval() {
+  if (document.hidden || !mpRoomId || !mpPlayerId) return null;
+  if (!mpData) return 700;
+  if (mpData.ai_pending) return 600;
+  if (mpData.solo_mode) return null; // 1인 AI 대전: 내 차례/종료 시 폴링 완전 정지 (0 req/s)
+  if (mpData.phase === "LOBBY" || mpData.phase === "DONE") return 2200;
+  return 1800;
 }
+
+function mpSchedulePoll() {
+  mpStopPoll();
+  const ms = mpGetPollInterval();
+  if (ms === null) return;
+  mpPollTimer = setTimeout(async () => {
+    mpPollTimer = null;
+    if (document.hidden || !mpRoomId || !mpPlayerId) return;
+    if (!mpPollBusy) {
+      mpPollBusy = true;
+      try {
+        const res = await fetch(`/api/mp/${mpRoomId}?player_id=${encodeURIComponent(mpPlayerId)}`);
+        if (res.ok) {
+          const out = await res.json();
+          if (out.data) mpApply(out.data, false);
+        }
+      } catch (_) {} finally { mpPollBusy = false; }
+    }
+    mpSchedulePoll();
+  }, ms);
+}
+
+function mpStartPoll() {
+  mpSchedulePoll();
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    mpStopPoll();
+  } else if (mpRoomId && mpPlayerId) {
+    // 복귀 시 즉시 1회 동기화 후 적응형 폴링 재개
+    if (!mpPollBusy) {
+      mpPollBusy = true;
+      fetch(`/api/mp/${mpRoomId}?player_id=${encodeURIComponent(mpPlayerId)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((out) => { if (out && out.data) mpApply(out.data, false); })
+        .catch(() => {})
+        .finally(() => { mpPollBusy = false; mpSchedulePoll(); });
+    }
+  }
+});
 
 function mpApply(d, force = false) {
   const sig = JSON.stringify(d);
+  mpData = d;
+  mpGameType = d.game_type;
+  mpSchedulePoll();
   if (!force && sig === mpLastSig) return;
   const prevPhase = mpData ? mpData.phase : "";
   const prevRound = mpData ? mpData.round : 0;
   mpLastSig = sig;
-  mpData = d;
-  mpGameType = d.game_type;
 
   if (typeof SFX !== "undefined") {
     if (d.phase === "DONE" && prevPhase !== "DONE") SFX.win();

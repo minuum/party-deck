@@ -109,18 +109,46 @@ async function joinRoom() {
   startPolling();
 }
 
+function getHsPollInterval() {
+  if (document.hidden || !roomId || !playerId) return null;
+  if (!state) return 700;
+  if (state.ai_pending) return 600;
+  if (state.solo_mode) return null; // 1인 AI 대전: 내 차례/종료 시 폴링 정지 (0 req/s)
+  if (state.phase === "LOBBY" || state.phase === "GAME_OVER") return 2200;
+  return 1800;
+}
+
+function scheduleHsPoll() {
+  stopPolling();
+  const ms = getHsPollInterval();
+  if (ms === null) return;
+  pollTimer = setTimeout(async () => {
+    pollTimer = null;
+    if (document.hidden || !roomId || !playerId) return;
+    await fetchState();
+    scheduleHsPoll();
+  }, ms);
+}
+
 function startPolling() {
   stopPolling();
-  fetchState();
-  pollTimer = setInterval(fetchState, 800);
+  fetchState().then(() => scheduleHsPoll());
 }
 
 function stopPolling() {
   if (pollTimer) {
-    clearInterval(pollTimer);
+    clearTimeout(pollTimer);
     pollTimer = null;
   }
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopPolling();
+  } else if (roomId && playerId) {
+    fetchState().then(() => scheduleHsPoll());
+  }
+});
 
 async function fetchState() {
   if (!roomId || !playerId || pollInFlight) return;
@@ -156,6 +184,7 @@ async function sendAction(payload) {
     if (msg.type === "state") {
       state = msg.data;
       render();
+      scheduleHsPoll();
     }
   } catch (_) { }
 }

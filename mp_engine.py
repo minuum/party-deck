@@ -2220,4 +2220,6 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
         "state": state_out,
         "banner": room["banner"],
         "log": room["log"],
+        "ai_pending": bool(float(room.get("ai_next_at") or 0.0) > 0.0 and room["phase"] == "PLAYING"),
+        "solo_mode": all(p["is_ai"] for p in ps if p["id"] != viewer_id),
     }

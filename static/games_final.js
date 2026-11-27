@@ -22,7 +22,7 @@ let flAnimateRowIdx = -1;
 
 function flStopPoll() {
   if (flPollTimer) {
-    clearInterval(flPollTimer);
+    clearTimeout(flPollTimer);
     flPollTimer = null;
   }
 }
@@ -503,21 +503,36 @@ function flApplyServerData(d, fromSubmit = false) {
 
 function flStartPoll() {
   flStopPoll();
-  flPollTimer = setInterval(async () => {
-    if (!flState || flState.mode !== "friend" || !flState.roomId || !flState.playerId || flPollBusy) return;
-    flPollBusy = true;
-    try {
-      const res = await fetch(`/api/fl/${flState.roomId}?player_id=${encodeURIComponent(flState.playerId)}`);
-      if (res.ok) {
-        const out = await res.json();
-        if (out.data) flApplyServerData(out.data, false);
+  if (document.hidden || !flState || flState.mode !== "friend" || !flState.roomId || !flState.playerId) return;
+  if (flState.phase === "DONE") return;
+  const ms = flState.phase === "WAITING" ? 2200 : 1800;
+  flPollTimer = setTimeout(async () => {
+    flPollTimer = null;
+    if (document.hidden || !flState || flState.mode !== "friend") return;
+    if (!flPollBusy) {
+      flPollBusy = true;
+      try {
+        const res = await fetch(`/api/fl/${flState.roomId}?player_id=${encodeURIComponent(flState.playerId)}`);
+        if (res.ok) {
+          const out = await res.json();
+          if (out.data) flApplyServerData(out.data, false);
+        }
+      } catch (_) {
+      } finally {
+        flPollBusy = false;
       }
-    } catch (_) {
-    } finally {
-      flPollBusy = false;
     }
-  }, 800);
+    flStartPoll();
+  }, ms);
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    flStopPoll();
+  } else if (flState && flState.mode === "friend" && flState.roomId && flState.playerId) {
+    flStartPoll();
+  }
+});
 
 function flShowFriendErr(msg) {
   const el = $("fl-friend-err");
