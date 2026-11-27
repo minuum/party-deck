@@ -41,7 +41,14 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v2.6 <span>방금 전</span></div>
+          <div class="patch-ver">v3.0 <span>방금 전</span></div>
+          <ul>
+            <li><strong>구현된 8개 게임 전체 멀티플레이(100%) 지원!</strong></li>
+            <li><code>양자택일·무거운13·미스터리거래소·러시안룰렛·보석암시장·돼지저금통</code> 모두 방 코드/초대 링크(<code>?mp_room=</code>)·AI 추가/제거·7일 저장·새로고침 복구 지원</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v2.6</div>
           <ul>
             <li><strong>3일차 메인매치 〈보석 암시장〉</strong> 구현 완료 (보석/폭탄 교환 + <strong>마니또 곱셈 점수</strong> 심리전)</li>
             <li><strong>3일차 감옥매치 〈돼지 저금통〉</strong> 구현 완료 (5개 저금통 흑/백 동전 암기 &amp; 의심 5점 선취전)</li>
@@ -221,6 +228,95 @@
       </div>
 
       <div id="hub-games-grid" class="hub-games-grid"></div>
+    </section>
+
+    <!-- UNIFIED MULTIPLAYER SCREEN FOR ALL GAMES (DAY 1 ~ DAY 3+) -->
+    <section id="screen-mp" class="screen">
+      <div class="sub-nav-bar">
+        <button class="back-hub-btn" type="button" onclick="mpExitToHub()">◀ 전체 게임 목록</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="btn-mp-save" class="icon-btn hidden" type="button" title="현재 방 7일 저장">💾</button>
+          <button id="btn-mp-end" class="icon-btn danger hidden" type="button" title="방장 권한: 게임 종료">🏁</button>
+          <span id="mp-nav-tag" class="sub-nav-tag">멀티플레이</span>
+        </div>
+      </div>
+
+      <!-- Entry (Create / Join / Solo) -->
+      <div id="mp-entry-view" class="glass-card" style="margin-top:12px;">
+        <div style="text-align:center;">
+          <div class="eyebrow" id="mp-entry-day">GAME</div>
+          <h2 id="mp-entry-title" style="font-size:26px;color:var(--gold-bright);margin:4px 0;">게임 이름</h2>
+          <p id="mp-entry-desc" class="muted" style="font-size:12.5px;"></p>
+        </div>
+        <button id="btn-mp-resume" type="button" class="btn btn-resume hidden">
+          <span>💾 진행 중인 방 이어하기</span>
+          <small id="mp-resume-meta">방 코드 ----</small>
+        </button>
+        <label class="field-label">닉네임</label>
+        <input id="mp-nick" class="text-input" maxlength="12" value="민우" placeholder="닉네임 입력" />
+        <button id="btn-mp-solo" type="button" class="btn btn-gold btn-lg">
+          <span>🤖 1인 플레이 (vs AI)</span>
+          <small>AI들과 즉시 시작</small>
+        </button>
+        <div class="divider"><span>또는 친구와 함께 (멀티플레이)</span></div>
+        <button id="btn-mp-create" type="button" class="btn btn-outline btn-lg">
+          <span>👑 방 만들기 (친구 초대)</span>
+          <small>4자리 초대 코드 &amp; 링크 생성</small>
+        </button>
+        <div class="join-row">
+          <input id="mp-code-in" class="text-input code-input" maxlength="4" placeholder="방 코드 (4자리)" />
+          <button id="btn-mp-join" type="button" class="btn btn-dark">입장</button>
+        </div>
+        <div id="mp-entry-err" class="error-msg hidden"></div>
+      </div>
+
+      <!-- Lobby View -->
+      <div id="mp-lobby-view" class="hidden" style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+        <div class="lobby-top" style="padding:6px 0;">
+          <div id="mp-role-banner" class="role-banner host">👑 내가 방장입니다</div>
+          <div class="room-code-box">
+            <span class="room-code-label">방 초대 코드</span>
+            <div id="mp-lobby-code" class="room-code-val">----</div>
+          </div>
+          <div class="lobby-share-row">
+            <button id="btn-mp-copy-code" type="button" class="btn btn-dark btn-sm">📋 코드 복사</button>
+            <button id="btn-mp-copy-link" type="button" class="btn btn-outline btn-sm">🔗 초대 링크 복사</button>
+          </div>
+        </div>
+        <div class="glass-card" style="padding:12px;">
+          <div class="lobby-players-head">
+            <span>참가자 (<span id="mp-lobby-cnt">1</span>/<span id="mp-lobby-max">5</span>)</span>
+            <span class="muted">최소 2인 이상</span>
+          </div>
+          <ul id="mp-lobby-list" class="lobby-list"></ul>
+        </div>
+        <div id="mp-host-bar" class="lobby-actions" style="margin-top:4px;">
+          <div class="ai-manage-row">
+            <button id="btn-mp-add-ai" type="button" class="btn btn-outline btn-sm" style="flex:1;margin:0;">🤖 AI +1 추가</button>
+            <button id="btn-mp-rem-ai" type="button" class="btn btn-dark btn-sm" style="flex:1;margin:0;">AI -1 빼기</button>
+          </div>
+          <button id="btn-mp-start" type="button" class="btn btn-gold btn-lg">🚀 게임 시작하기</button>
+        </div>
+        <div id="mp-guest-bar" class="guest-wait-card hidden" style="margin-top:4px;">
+          <div class="pulse-dot"></div>
+          <div>방장이 게임을 시작하기를 기다리는 중...</div>
+        </div>
+      </div>
+
+      <!-- Playing / Done Dynamic View -->
+      <div id="mp-play-view" class="hidden" style="display:flex;flex-direction:column;gap:8px;flex:1;overflow:hidden;margin-top:6px;">
+        <div class="d1-hud" style="margin:0;">
+          <span class="round-pill" id="mp-hud-round">R1</span>
+          <span class="phase-pill" id="mp-hud-mid">진행 중</span>
+          <span class="chip-pill" id="mp-hud-right" style="font-size:11.5px;">-</span>
+        </div>
+        <div class="table-banner" style="padding:7px 10px;">
+          <div id="mp-banner" class="banner-text" style="font-size:13px;"></div>
+          <div id="mp-log" class="mini-log"></div>
+        </div>
+        <div id="mp-board" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="mp-controls" class="my-area" style="gap:7px;padding:10px;"></div>
+      </div>
     </section>
 
     <!-- DAY 3 MAIN MATCH: 보석 암시장 -->
@@ -918,5 +1014,6 @@
   <script src="/static/games_day2.js"></script>
   <script src="/static/games_day3.js"></script>
   <script src="/static/games_final.js"></script>
+  <script src="/static/mp_hub.js"></script>
 </body>
 </html>

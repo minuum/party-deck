@@ -12,6 +12,8 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+import mp_engine
+
 app = FastAPI(title="HIT, STAY — The Devil's Plan")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -1202,6 +1204,81 @@ async def fl_restart(room_id: str, payload: dict):
         p["pending_guess"] = ""
     STORE.set_json(key, room)
     return JSONResponse({"data": fl_serialize(room, pid)})
+
+
+# ---------------------------------------------------------------------------
+# Unified Multiplayer Endpoints for All Party Deck Games (Day 1 ~ Day 3+)
+# ---------------------------------------------------------------------------
+@app.post("/api/mp/create")
+async def mp_create(payload: dict):
+    try:
+        gt = payload.get("game_type", "")
+        if gt not in mp_engine.GAME_META:
+            return JSONResponse({"error": "지원하지 않는 게임입니다."}, status_code=400)
+        name = (payload.get("name") or "방장").strip()[:12]
+        mode = payload.get("mode", "multi")
+        rid = mp_engine.gen_code()
+        while STORE.get_json(f"hs:mp:{rid}") is not None:
+            rid = mp_engine.gen_code()
+        room = mp_engine.create_mp_room(gt, name, rid)
+        if mode == "solo":
+            ai_cnt = int(payload.get("ai_count", mp_engine.GAME_META[gt]["max_players"] - 1))
+            for _ in range(ai_cnt):
+                mp_engine.add_ai_to_room(room)
+            mp_engine.start_mp_game(room)
+        STORE.set_json(f"hs:mp:{rid}", room)
+        pid = room["host_id"]
+        return JSONResponse({"room_id": rid, "player_id": pid, "data": mp_engine.serialize_mp_room(room, pid)})
+    except Exception as e:
+        return JSONResponse({"error": f"{type(e).__name__}: {e}"}, status_code=500)
+
+
+@app.post("/api/mp/join")
+async def mp_join(payload: dict):
+    rid = (payload.get("room_id") or "").strip().upper()
+    name = (payload.get("name") or "참가자").strip()[:12]
+    key = f"hs:mp:{rid}"
+    room = STORE.get_json(key)
+    if not room:
+        return JSONResponse({"error": "방을 찾을 수 없습니다."}, status_code=404)
+    existing = next((p for p in room["players"] if not p["is_ai"] and p["name"] == name), None)
+    if existing:
+        return JSONResponse({"room_id": rid, "player_id": existing["id"], "rejoined": True, "data": mp_engine.serialize_mp_room(room, existing["id"])})
+    if room["phase"] != "LOBBY":
+        return JSONResponse({"error": "이미 진행 중인 방입니다. (기존 닉네임으로 재입장 가능)"}, status_code=400)
+    if len(room["players"]) >= mp_engine.GAME_META[room["game_type"]]["max_players"]:
+        return JSONResponse({"error": "방이 가득 찼습니다."}, status_code=400)
+    pid = f"mp_{random.randint(10000, 99999)}"
+    room["players"].append({"id": pid, "name": name, "is_ai": False})
+    STORE.set_json(key, room)
+    return JSONResponse({"room_id": rid, "player_id": pid, "data": mp_engine.serialize_mp_room(room, pid)})
+
+
+@app.get("/api/mp/{room_id}")
+async def mp_get(room_id: str, player_id: str):
+    room = STORE.get_json(f"hs:mp:{room_id.upper()}")
+    if not room:
+        return JSONResponse({"error": "방을 찾을 수 없습니다."}, status_code=404)
+    if not any(p["id"] == player_id for p in room["players"]):
+        return JSONResponse({"error": "권한이 없습니다."}, status_code=403)
+    return JSONResponse({"data": mp_engine.serialize_mp_room(room, player_id)})
+
+
+@app.post("/api/mp/{room_id}/action")
+async def mp_action(room_id: str, payload: dict):
+    key = f"hs:mp:{room_id.upper()}"
+    room = STORE.get_json(key)
+    if not room:
+        return JSONResponse({"error": "방을 찾을 수 없습니다."}, status_code=404)
+    pid = payload.get("player_id", "")
+    if payload.get("action") == "save":
+        STORE.set_json(key, room, ttl=604800)
+        return JSONResponse({"saved": True, "data": mp_engine.serialize_mp_room(room, pid)})
+    err = mp_engine.handle_mp_action(room, pid, payload)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+    STORE.set_json(key, room)
+    return JSONResponse({"data": mp_engine.serialize_mp_room(room, pid)})
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

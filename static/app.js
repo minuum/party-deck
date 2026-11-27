@@ -1140,20 +1140,10 @@ function renderHub() {
     btn.onclick = () => {
       if (g.playable && g.id === "hit_stay") {
         showScreen("home");
-      } else if (g.playable && g.id === "choice") {
-        startChoiceGame();
-      } else if (g.playable && g.id === "heavy_13") {
-        startHeavy13Game();
-      } else if (g.playable && g.id === "mystery_exchange") {
-        startExchangeGame();
-      } else if (g.playable && g.id === "russian_roulette") {
-        startRouletteGame();
       } else if (g.playable && g.id === "formula_light") {
         startFormulaLightGame("duel");
-      } else if (g.playable && g.id === "gem_market") {
-        startGemMarketGame();
-      } else if (g.playable && g.id === "piggy_bank") {
-        startPiggyBankGame();
+      } else if (g.playable && typeof openMpGameEntry === "function") {
+        openMpGameEntry(g.id, g.name, g.catLabel + " · " + g.day, g.desc);
       } else {
         $("cs-title").textContent = g.name;
         $("cs-cat").textContent = g.catLabel;
