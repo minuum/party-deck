@@ -1181,6 +1181,59 @@ const GAME_VISUALS = {
   },
 };
 
+const GAME_RULE_BULLETS = {
+  hit_stay: ["35장 숫자 카드(7×1~1×7, -1×7)로 매 라운드 한계 숫자(5~12) 이하 최근접 합 만들기", "3장 중 1장 공개 → 1차 베팅 → HIT/STAY → 2차 베팅 → 정산", "동점 시 보유 카드가 더 많은 쪽 승리 · 최소 보유 칩 잔액까지 자유 레이즈"],
+  formula_light: ["상대가 출제한 9칸 등식(^ > ×÷ > +-, 선행 0 금지)을 먼저 맞히기", "🟩 자리+문자 일치 · 🟨 포함(자리 다름) · 🟥 없음/개수 초과", "친구 1:1은 라운드 동시 제출 & 무승부 판정 지원"],
+  choice: ["매 라운드 '공공의 이익' vs '개인의 이익' 중 1개 동시 선택", "과반 이상 공공 선택 시 공동상금 누적 + 공공 +3점 / 개인 +5점", "과반 실패 시 공공 0점, 개인 선택자만 득점"],
+  heavy_13: ["바위 카드(0~6) 1장 + 3색/레인보우 칩 1개 동시 제출 (14라운드)", "🌈 레인보우 최우선 → 바위 숫자 큰 순으로 받침대에 적재", "합이 13 이상 폭발 시 원래 놓여있던 카드 장수만큼 벌점 (최소 벌점 승)"],
+  mystery_exchange: ["7개 종목(맛소금융~후자전자)에 숨겨진 가격 패턴을 분석해 10라운드 거래", "🏛️ 데블스 원작 룰 / 🎲 랜덤 룰 섞기 선택 가능", "매 라운드 종료 시 종목 1개씩 비밀 룰(🔒) 공개!"],
+  russian_roulette: ["16개 약실 중 실탄 2발! 개인 크레딧으로 조사·회전·조작 수행", "공개조사(1C) · 비공개조사(2C) · 총구 회전(3~4C) · 게이지6 위치 교체", "크레딧 소진 시 총구 조준자부터 시계방향 격발 (피탄 2명 탈락)"],
+  gem_market: ["보석(+2~+5) & 폭탄(-4, -6) 카드를 상대와 교환하며 구매자 조건 공략", "핵심 변수: 최종 점수 = 내 기본 점수 × 내 비공개 마니또 기본 점수!", "내 마니또를 살리고 적에게 폭탄을 넘기는 심리전"],
+  piggy_bank: ["1~5번 돼지 저금통(초기 ⚫1, ⚪1)에 동전 1~5개를 넣고 전달", "전달받은 상대가 흑/백 총개수를 대답 → 틀렸다면 '🚨 의심!' 선언", "의심 성공 +1점 / 실패 -1점 · 먼저 5점 달성 시 우승"],
+  auction_bingo: ["5×5 숫자 빙고판(1~25) · 매 라운드 경매 번호에 칩 비공개 입찰", "최고 입찰자가 번호를 낙찰받아 내 빙고판 체크", "먼저 3줄 빙고 완성 또는 15라운드 종료 시 최다 줄 승리"],
+  wall_go_2: ["5×5 보드에서 내 말을 인접 1칸 이동 후 4방향 중 1곳에 벽 설치", "벽으로 둘러싸인 내 독립 영토 칸 수를 최대한 넓히기", "20턴 종료 시 가장 넓은 영토를 차지한 플레이어 승리"],
+  hidden_word: ["출제자가 한글 명사 5개 봉투 중 1개를 히든 워드로 선택", "한글 명사 힌트 제출 시 Gemini AI가 유사도(%) 공개 (95%↑ 조기 종료!)", "나머지 플레이어가 힌트+유사도를 보고 히든 워드 동시 추리"],
+  formula_tower: ["매 라운드 주어진 4개 숫자 카드와 사칙연산으로 목표 숫자에 최근접 도전", "가장 가까운 수식을 만든 플레이어가 탑 +1층 적재", "가장 먼저 5층 탑을 완성하면 우승!"],
+  gradation: ["⬛검정-▪️진회색-▫️상아색-⬜흰색 대칭 7통에 숫자(0~9, 오름차순, 합≤30) 배치", "선공이 통을 내면 상대에겐 오직 '통 색상'만 공개 (위치 비공개!)", "7라운드 대결: 큰 수 +1점 + 다음 선공 · 최다 승점 우승"],
+  card_janggi: ["5×5 보드 · 큰 말(👑) 1개 + 작은 말(●) 3개 · 5종 동물 행마 카드", "🐭쥐 · 🐴말 · 🐵원숭이 · 🐘코끼리 · 🦒기린 카드 순서를 미리 배치(후공 첫 4장)", "상대 큰 말(👑)을 잡거나 내 큰 말이 상대 끝줄에 입성하면 우승"],
+  color_link: ["6×6 보드에 5가지 색상(A~E) 말 쌍을 번갈아 배치", "규칙: 모든 쌍은 선 겹침 금지 + 각 경로 길이 6칸 이상(말 포함)이어야 함", "불가능하다고 판단 시 '🚨 불가능 선언' → 방어자가 경로 증명 실패 시 공격자 승!"],
+  secret_code: ["중복 없는 4자리 비밀 숫자 코드를 가장 먼저 해독하는 레이스", "🟢 스트라이크(자리+숫자 일치) · 🟡 볼(숫자만 포함)", "멀티플레이 동시 레이스로 최속 해독자 우승"],
+};
+
+function openGameLaunch(g) {
+  if (g.id === "hit_stay") showScreen("home");
+  else if (g.id === "formula_light") startFormulaLightGame("duel");
+  else if (typeof openMpGameEntry === "function") openMpGameEntry(g.id, g.name, g.catLabel + " · " + g.day, g.desc);
+}
+
+function openGameInfoSheet(g) {
+  const vis = GAME_VISUALS[g.id];
+  const iconEl = $("cs-icon");
+  if (iconEl) {
+    iconEl.innerHTML = vis ? vis.svg : "🎲";
+    iconEl.style.borderColor = vis ? vis.accent : "rgba(255,255,255,0.2)";
+  }
+  $("cs-title").textContent = g.name;
+  $("cs-cat").textContent = g.catLabel;
+  $("cs-day").textContent = g.day;
+  $("cs-status").textContent = g.playable ? "🟢 1인 AI & 멀티플레이 가능" : `구현 예정 (${g.progress}%)`;
+  $("cs-status").className = "st-badge " + (g.playable ? "ok" : "warn");
+  $("cs-desc").textContent = g.desc;
+
+  const bullets = GAME_RULE_BULLETS[g.id] || ["공식 룰에 맞춰 순차 구현 예정입니다."];
+  $("cs-rules-list").innerHTML = bullets.map((b) => `<li>${b}</li>`).join("");
+
+  const playBtn = $("btn-cs-play");
+  const soonNote = $("cs-soon-note");
+  playBtn.classList.toggle("hidden", !g.playable);
+  soonNote.classList.toggle("hidden", g.playable);
+  playBtn.onclick = () => {
+    $("modal-coming-soon").classList.add("hidden");
+    openGameLaunch(g);
+  };
+  $("modal-coming-soon").classList.remove("hidden");
+}
+
 function renderHub() {
   const grid = $("hub-games-grid");
   if (!grid) return;
@@ -1197,41 +1250,42 @@ function renderHub() {
   grid.innerHTML = "";
   filtered.forEach((g) => {
     const vis = GAME_VISUALS[g.id];
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "game-tile" + (g.playable ? " playable" : "") + (g.id === "hit_stay" ? " featured-hero" : "");
-    if (vis) btn.style.setProperty("--tile-accent", vis.accent);
+    const row = document.createElement("div");
+    row.className = "hub-row-card" + (g.playable ? " playable" : "");
+    if (vis) row.style.setProperty("--tile-accent", vis.accent);
 
-    const iconHtml = vis ? `<div class="tile-icon-box">${vis.svg}</div>` : "";
-    btn.innerHTML = `
-      <div class="tile-top">
-        <span class="tile-tag">${g.catLabel} · ${g.day}</span>
-        <span class="st-badge ${g.playable ? "ok" : "warn"}">${g.playable ? "멀티 ▶" : `${g.progress}%`}</span>
+    const iconSvg = vis
+      ? vis.svg
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="2.5"/></svg>`;
+
+    row.innerHTML = `
+      <div class="hub-row-icon">${iconSvg}</div>
+      <div class="hub-row-mid">
+        <div class="hub-row-title">${g.name} <span class="tile-tag">${g.catLabel} · ${g.day}</span></div>
+        <div class="hub-row-sub">${g.desc}</div>
       </div>
-      <div class="tile-head-row">
-        ${iconHtml}
-        <div class="tile-title">${g.name}</div>
+      <div class="hub-row-right">
+        <button type="button" class="hub-info-pill">📖 설명</button>
+        ${g.playable ? `<button type="button" class="hub-play-pill">플레이 ▶</button>` : `<span class="hub-soon-pill">준비중</span>`}
       </div>
-      <div class="tile-desc">${g.desc}</div>
-      <div class="tile-bar"><div class="tile-bar-fill" style="width:${g.progress}%;background:${vis ? vis.accent : "var(--green)"}"></div></div>
     `;
-    btn.onclick = () => {
-      if (g.playable && g.id === "hit_stay") {
-        showScreen("home");
-      } else if (g.playable && g.id === "formula_light") {
-        startFormulaLightGame("duel");
-      } else if (g.playable && typeof openMpGameEntry === "function") {
-        openMpGameEntry(g.id, g.name, g.catLabel + " · " + g.day, g.desc);
-      } else {
-        $("cs-title").textContent = g.name;
-        $("cs-cat").textContent = g.catLabel;
-        $("cs-day").textContent = g.day;
-        $("cs-status").textContent = `구현 예정 (${g.progress}%)`;
-        $("cs-desc").textContent = g.desc;
-        $("modal-coming-soon").classList.remove("hidden");
-      }
+
+    row.querySelector(".hub-info-pill").onclick = (e) => {
+      e.stopPropagation();
+      openGameInfoSheet(g);
     };
-    grid.appendChild(btn);
+    const pBtn = row.querySelector(".hub-play-pill");
+    if (pBtn) {
+      pBtn.onclick = (e) => {
+        e.stopPropagation();
+        openGameLaunch(g);
+      };
+    }
+    row.onclick = () => {
+      if (g.playable) openGameInfoSheet(g);
+      else openGameInfoSheet(g);
+    };
+    grid.appendChild(row);
   });
 }
 
