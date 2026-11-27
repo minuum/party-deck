@@ -759,7 +759,7 @@ function renderMpHiddenWord(d, me, board, ctrl, isHost) {
     }
     ctrl.innerHTML = `
       <div style="display:flex;gap:6px;">
-        <input id="mp-hw-hint" class="text-input" placeholder="한글 명사 힌트 입력 (95%↑ 조기종료)" />
+        <input id="mp-hw-hint" class="text-input" placeholder="한글 명사 힌트 입력 (90%↑ 조기종료)" />
         <button class="btn btn-gold" style="padding:0 14px;white-space:nowrap;" onclick="mpSend({word:$('mp-hw-hint').value})">힌트</button>
       </div>
       ${(st.hints || []).length > 0 ? `<button class="btn btn-outline" style="padding:8px;font-size:12.5px;" onclick="mpSend({action:'finish_hints'})">🎯 힌트 종료 · 상대 추리 시작</button>` : ""}`;

@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="apple-touch-icon" href="/static/favicon.svg" />
   <title>Party Deck — THE DEVIL'S PLAN</title>
-  <link rel="stylesheet" href="/static/style.css?v=4.1" />
+  <link rel="stylesheet" href="/static/style.css?v=4.2" />
 </head>
 
 <body>
@@ -45,7 +45,14 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v4.1 <span>방금 전</span></div>
+          <div class="patch-ver">v4.2 <span>방금 전</span></div>
+          <ul>
+            <li><strong>〈히든 워드〉 한국어 임베딩 캘리브레이션 &amp; 90% 조기종료 최적화!</strong> — 20개 히든 워드 실측 분포 기반으로 무관어(15~25%)·핵심연상(70~86%)·스포일러(90%↑) 변별력 강화</li>
+            <li><strong>〈히든 워드〉 사람 출제 시 AI 추리자 자동 진행 버그 수정</strong> — 힌트 종료 후 AI들이 0.55~0.95초 간격으로 차례로 추리 &amp; 자동 라운드 정산!</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v4.1</div>
           <ul>
             <li><strong>〈러시안 룰렛〉 우측 실시간 격발 순서표(#1~#16) 추가!</strong> — 총구 회전 시 누가 몇 번 약실을 맞는지·내 담당 약실·실탄 경고를 실시간으로 표시 &amp; 표 클릭 선택 지원</li>
             <li><strong>전체 게임 AI 자연스러운 턴 페이싱 적용</strong> — 모든 AI가 즉시 넘어가지 않고 <strong>0.55~0.95초</strong> 간격으로 한 명씩 차례대로 행동!</li>
@@ -54,15 +61,20 @@
         <div class="patch-item">
           <div class="patch-ver">v4.0</div>
           <ul>
-            <li><strong>갤러리 카드 그리드(Gallery Card Grid) UI 전면 업그레이드</strong>: 모바일 2열 · 태블릿 3열 · 데스크톱 4열 반응형 쇼케이스 카드 레이아웃 적용</li>
-            <li><strong>CSS Subgrid &amp; Container Queries</strong> 적용으로 카드별 미디어 배너·제목·설명·버튼 라인 완벽 정렬 + <code>?v=4.0</code> 캐시 무효화 적용</li>
-            <li><strong>Impeccable 다크 럭셔리 폴리싱</strong>: 게임별 시그니처 스포트라이트 배너, <code>📖 설명</code> → <code>▶ 플레이</code> 원클릭 흐름 유지</li>
+            <li><strong>갤러리 카드 그리드(Gallery Card Grid) UI 전면 업그레이드</strong>: 모바일 2열 · 태블릿 3열 · 데스크톱 4열 반응형 쇼케이스 카드 레이아웃
+              적용</li>
+            <li><strong>CSS Subgrid &amp; Container Queries</strong> 적용으로 카드별 미디어 배너·제목·설명·버튼 라인 완벽 정렬 +
+              <code>?v=4.0</code> 캐시 무효화 적용
+            </li>
+            <li><strong>Impeccable 다크 럭셔리 폴리싱</strong>: 게임별 시그니처 스포트라이트 배너, <code>📖 설명</code> → <code>▶ 플레이</code> 원클릭
+              흐름 유지</li>
           </ul>
         </div>
         <div class="patch-item">
           <div class="patch-ver">v3.9</div>
           <ul>
-            <li><strong>메인 페이지 UI 개편</strong>: 전용 SVG 아이콘·요약·<code>📖 설명</code> &amp; <code>▶ 플레이</code> 규칙 시트 플로우 적용</li>
+            <li><strong>메인 페이지 UI 개편</strong>: 전용 SVG 아이콘·요약·<code>📖 설명</code> &amp; <code>▶ 플레이</code> 규칙 시트 플로우 적용
+            </li>
           </ul>
         </div>
         <div class="patch-item">
@@ -1197,12 +1209,12 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=4.1"></script>
-  <script src="/static/games_day1.js?v=4.1"></script>
-  <script src="/static/games_day2.js?v=4.1"></script>
-  <script src="/static/games_day3.js?v=4.1"></script>
-  <script src="/static/games_final.js?v=4.1"></script>
-  <script src="/static/mp_hub.js?v=4.1"></script>
+  <script src="/static/app.js?v=4.2"></script>
+  <script src="/static/games_day1.js?v=4.2"></script>
+  <script src="/static/games_day2.js?v=4.2"></script>
+  <script src="/static/games_day3.js?v=4.2"></script>
+  <script src="/static/games_final.js?v=4.2"></script>
+  <script src="/static/mp_hub.js?v=4.2"></script>
 </body>
 
 </html>

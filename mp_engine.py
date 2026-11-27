@@ -2,6 +2,7 @@ import json
 import math
 import os
 import random
+import re
 import string
 import time
 import urllib.request
@@ -71,10 +72,16 @@ HW_HINTS_BANK = {
 }
 
 
+HW_EARLY_STOP_PCT = 90.0
+
+
 def _gemini_korean_relation_score(secret: str, word: str, api_key: str) -> Optional[float]:
     prompt = (
         f"너는 한국어 의미 유사도 판정기다. 두 한국어 명사 '{secret}'와(과) '{word}'의 종합 유사도를 0.0~99.0 사이의 숫자 하나로만 평가하라.\n"
-        "기준: 1) 의미적 거리(유의어/하위어 85~98), 2) 문맥적 공생(같은 상황·장소 60~84), 3) 관계적 구조(약한 연상 30~59, 무관 5~29).\n"
+        "기준: 1) 유의어·직접 스포일러(예: 화산-용암/마그마, 비행기-여객기): 90~98, "
+        "2) 핵심 연상(예: 화산-산/폭발, 카메라-사진): 70~87, "
+        "3) 문맥·간접 연상(예: 화산-온천/지질): 40~69, "
+        "4) 약한 연상·무관(예: 화산-화살/ㅋㅋ): 5~29.\n"
         '반드시 JSON 형식으로만 답하라: {"score": 72.5}'
     )
     for model in ("gemini-2.5-flash", "gemini-2.0-flash"):
@@ -95,9 +102,16 @@ def _gemini_korean_relation_score(secret: str, word: str, api_key: str) -> Optio
             with urllib.request.urlopen(req, timeout=6) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 txt = data["candidates"][0]["content"]["parts"][0]["text"]
-                parsed = json.loads(txt)
-                sc = float(parsed.get("score"))
-                return round(max(1.0, min(99.0, sc)), 1)
+                sc = None
+                try:
+                    parsed = json.loads(txt)
+                    sc = float(parsed.get("score"))
+                except Exception:
+                    m = re.search(r"\d+(?:\.\d+)?", txt)
+                    if m:
+                        sc = float(m.group(0))
+                if sc is not None:
+                    return round(max(1.0, min(99.0, sc)), 1)
         except Exception:
             continue
     return None
@@ -146,8 +160,9 @@ def compute_korean_similarity(secret: str, word: str) -> Tuple[float, str]:
             n1 = math.sqrt(sum(a * a for a in v1))
             n2 = math.sqrt(sum(b * b for b in v2))
             cos = dot / (n1 * n2) if n1 and n2 else 0.0
-            norm = max(0.0, min(1.0, (cos - 0.52) / 0.38))
-            pct = 5.0 + (norm ** 1.25) * 93.5
+            # Calibrated for gemini-embedding-001 Korean noun anisotropy (floor ~0.818, ceil ~0.898)
+            norm = max(0.0, min(1.0, (cos - 0.818) / 0.080))
+            pct = 5.0 + (norm ** 1.12) * 93.5
             return round(pct, 1), "gemini"
 
     # Built-in fallback semantic + lexical scorer when GEMINI_API_KEY is not set
@@ -411,7 +426,7 @@ def start_mp_game(room: dict):
             "ai_engine": "gemini" if os.environ.get("GEMINI_API_KEY") else "local",
         }
         room["banner"] = f"🔤 라운드 1 · 출제자 [{ps[0]['name']}]님이 봉투(5개 명사) 중 1개를 히든 워드로 고릅니다!"
-        room["log"] = "유사도 95% 이상 힌트가 나오면 즉시 힌트 단계가 조기 종료됩니다!"
+        room["log"] = f"유사도 {int(HW_EARLY_STOP_PCT)}% 이상 힌트가 나오면 즉시 힌트 단계가 조기 종료됩니다!"
         _hw_advance_ai(room)
 
     elif gt == "formula_tower":
@@ -1277,6 +1292,51 @@ def _act_wall_go(room: dict, me: dict, payload: dict):
 
 
 # --- 9. 히든 워드 (Original Day 5 Main Match: Korean Noun AI Similarity) ---
+def _hw_resolve_round_if_ready(room: dict) -> bool:
+    st = room["state"]
+    ps = room["players"]
+    setter = ps[st["setter_idx"]]
+    guessers = [p for p in ps if p["id"] != setter["id"]]
+    if not all(p["pending_guess"] is not None for p in guessers):
+        return False
+    any_exact = False
+    for p in guessers:
+        g = p["pending_guess"]
+        p["last_guess"] = f"{g['word']}({g['sim']}%)"
+        if g["word"] == st["secret"] or g["sim"] >= 99.9:
+            p["score"] += 3
+            any_exact = True
+        elif g["sim"] >= 75.0:
+            p["score"] += 1
+        p["pending_guess"] = None
+    max_hint_sim = max((h["sim"] for h in st["hints"]), default=0)
+    if not any_exact and max_hint_sim >= 50.0:
+        setter["score"] += 2
+        setter["last_guess"] = "방어성공(+2)"
+    else:
+        setter["last_guess"] = f"정답:{st['secret']}"
+
+    prev_secret = st["secret"]
+    if room["round"] >= st["max_rounds"]:
+        room["phase"] = "DONE"
+        room["ai_next_at"] = 0.0
+        champ = max(ps, key=lambda x: x["score"])
+        room["banner"] = f"🏆 히든 워드 최종 우승: {champ['name']} ({champ['score']}점)!"
+        room["log"] = f"마지막 라운드 정답: [{prev_secret}]"
+    else:
+        room["round"] += 1
+        st["setter_idx"] = (st["setter_idx"] + 1) % len(ps)
+        st["envelope"] = list(random.choice(HW_ENVELOPES))
+        st["secret"] = ""
+        st["hints"] = []
+        st["sub_phase"] = "PICK_SECRET"
+        nxt = ps[st["setter_idx"]]
+        room["banner"] = f"✨ 직전 정답 [{prev_secret}]! R{room['round']} 출제자: {nxt['name']}"
+        room["log"] = f"{nxt['name']}님이 새 봉투에서 히든 워드를 선택합니다."
+        _hw_advance_ai(room)
+    return True
+
+
 def _hw_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
@@ -1286,8 +1346,13 @@ def _hw_advance_ai(room: dict):
     setter = ps[st["setter_idx"]]
     if st["sub_phase"] == "PICK_SECRET" and setter["is_ai"]:
         _schedule_mp_ai(room)
-    else:
-        room["ai_next_at"] = 0.0
+        return
+    if st["sub_phase"] == "GUESS":
+        pending_ai = [p for p in ps if p["id"] != setter["id"] and p["is_ai"] and p["pending_guess"] is None]
+        if pending_ai:
+            _schedule_mp_ai(room)
+            return
+    room["ai_next_at"] = 0.0
 
 
 def _hw_step_one_ai(room: dict) -> bool:
@@ -1306,7 +1371,20 @@ def _hw_step_one_ai(room: dict) -> bool:
         st["sub_phase"] = "GUESS"
         room["banner"] = f"🤖 출제자 {setter['name']}이(가) 힌트 {len(st['hints'])}개를 공개했습니다! 히든 워드를 유추하세요!"
         room["log"] = "힌트와 AI 유사도(%)를 보고 정확한 한글 명사를 제출하세요!"
+        _hw_advance_ai(room)
         return True
+    if st["sub_phase"] == "GUESS":
+        for p in ps:
+            if p["id"] != setter["id"] and p["is_ai"] and p["pending_guess"] is None:
+                lvl = p.get("ai_level", "normal")
+                hit_prob = {"easy": 0.12, "normal": 0.25, "pro": 0.42, "devil": 0.58}.get(lvl, 0.25)
+                ai_w = st["secret"] if random.random() < hit_prob else random.choice(st["envelope"])
+                asim, _ = compute_korean_similarity(st["secret"], ai_w)
+                p["pending_guess"] = {"word": ai_w, "sim": asim}
+                room["log"] = f"🤖 {p['name']} 추리 제출 완료!"
+                if not _hw_resolve_round_if_ready(room):
+                    _hw_advance_ai(room)
+                return True
     return False
 
 
@@ -1324,7 +1402,7 @@ def _act_hidden_word(room: dict, me: dict, payload: dict):
             return "봉투 속 5개 단어 중 1개를 선택하세요."
         st["secret"] = word
         st["sub_phase"] = "HINT"
-        room["banner"] = f"🔐 히든 워드 확정! 이제 한글 명사 힌트를 제시하세요 (최대 10개, 95%↑ 조기종료)"
+        room["banner"] = f"🔐 히든 워드 확정! 이제 한글 명사 힌트를 제시하세요 (최대 10개, {int(HW_EARLY_STOP_PCT)}%↑ 조기종료)"
         return None
 
     if st["sub_phase"] == "HINT":
@@ -1335,6 +1413,7 @@ def _act_hidden_word(room: dict, me: dict, payload: dict):
                 return "최소 1개 이상의 힌트를 제시해야 합니다."
             st["sub_phase"] = "GUESS"
             room["banner"] = f"🎯 힌트 종료! 나머지 플레이어들은 {setter['name']}님의 히든 워드를 유추하세요!"
+            _hw_advance_ai(room)
             return None
         word = (payload.get("word") or "").strip()
         if not word or len(word) > 12:
@@ -1344,10 +1423,11 @@ def _act_hidden_word(room: dict, me: dict, payload: dict):
         sim, eng = compute_korean_similarity(st["secret"], word)
         st["ai_engine"] = eng
         st["hints"].append({"word": word, "sim": sim, "engine": eng})
-        if sim >= 95.0 or len(st["hints"]) >= st["max_hints"]:
+        if sim >= HW_EARLY_STOP_PCT or len(st["hints"]) >= st["max_hints"]:
             st["sub_phase"] = "GUESS"
-            reason = "🔥 유사도 95% 이상 조기 종료!" if sim >= 95.0 else "힌트 10개 소진!"
+            reason = f"🔥 유사도 {int(HW_EARLY_STOP_PCT)}% 이상 조기 종료!" if sim >= HW_EARLY_STOP_PCT else "힌트 10개 소진!"
             room["banner"] = f"{reason} 이제 나머지 플레이어들이 히든 워드를 추리합니다!"
+            _hw_advance_ai(room)
         else:
             room["banner"] = f"💡 힌트 [{word}] → AI 유사도 {sim}%! ({len(st['hints'])}/10)"
         return None
@@ -1362,52 +1442,11 @@ def _act_hidden_word(room: dict, me: dict, payload: dict):
         st["ai_engine"] = eng
         me["pending_guess"] = {"word": guess, "sim": sim}
 
-        # AI guessers submit
-        for p in ps:
-            if p["id"] != setter["id"] and p["is_ai"] and p["pending_guess"] is None:
-                ai_w = st["secret"] if random.random() < 0.25 else random.choice(st["envelope"])
-                asim, _ = compute_korean_similarity(st["secret"], ai_w)
-                p["pending_guess"] = {"word": ai_w, "sim": asim}
-
-        guessers = [p for p in ps if p["id"] != setter["id"]]
-        if all(p["pending_guess"] is not None for p in guessers):
-            any_exact = False
-            for p in guessers:
-                g = p["pending_guess"]
-                p["last_guess"] = f"{g['word']}({g['sim']}%)"
-                if g["word"] == st["secret"] or g["sim"] >= 99.9:
-                    p["score"] += 3
-                    any_exact = True
-                elif g["sim"] >= 85.0:
-                    p["score"] += 1
-                p["pending_guess"] = None
-            max_hint_sim = max((h["sim"] for h in st["hints"]), default=0)
-            if not any_exact and max_hint_sim >= 50.0:
-                setter["score"] += 2
-                setter["last_guess"] = "방어성공(+2)"
-            else:
-                setter["last_guess"] = f"정답:{st['secret']}"
-
-            prev_secret = st["secret"]
-            if room["round"] >= st["max_rounds"]:
-                room["phase"] = "DONE"
-                champ = max(ps, key=lambda x: x["score"])
-                room["banner"] = f"🏆 히든 워드 최종 우승: {champ['name']} ({champ['score']}점)!"
-                room["log"] = f"마지막 라운드 정답: [{prev_secret}]"
-            else:
-                room["round"] += 1
-                st["setter_idx"] = (st["setter_idx"] + 1) % len(ps)
-                st["envelope"] = list(random.choice(HW_ENVELOPES))
-                st["secret"] = ""
-                st["hints"] = []
-                st["sub_phase"] = "PICK_SECRET"
-                nxt = ps[st["setter_idx"]]
-                room["banner"] = f"✨ 직전 정답 [{prev_secret}]! R{room['round']} 출제자: {nxt['name']}"
-                room["log"] = f"{nxt['name']}님이 새 봉투에서 히든 워드를 선택합니다."
-                _hw_advance_ai(room)
-        else:
+        if not _hw_resolve_round_if_ready(room):
+            guessers = [p for p in ps if p["id"] != setter["id"]]
             w = sum(1 for p in guessers if p["pending_guess"] is None)
             room["log"] = f"⏳ 다른 추리자 {w}명 제출 대기 중..."
+            _hw_advance_ai(room)
         return None
     return "현재 수행할 수 없는 행동입니다."
 
