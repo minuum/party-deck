@@ -171,7 +171,7 @@ function mpStartPoll() {
         if (out.data) mpApply(out.data, false);
       }
     } catch (_) {} finally { mpPollBusy = false; }
-  }, 850);
+  }, 550);
 }
 
 function mpApply(d, force = false) {
@@ -382,24 +382,69 @@ function renderMpExchange(d, me, board, ctrl, isHost) {
     ${me.ready ? `<div class="wait-pill">⏳ 거래 완료! 다른 플레이어 마감 대기 중...</div>` : `<button type="button" class="btn btn-gold" style="padding:10px;" onclick="mpSend({action:'ready'})">📈 이번 라운드 거래 완료 (다음 룰 1개 공개)</button>`}`;
 }
 
-// --- 4. 러시안 룰렛 (Circular 16-Chamber Interactive SVG Revolver Cylinder!) ---
+// --- 4. 러시안 룰렛 (Circular 16-Chamber SVG + Right Live Firing Order Table #1~#16) ---
 function renderMpRoulette(d, me, board, ctrl, isHost) {
-  const aimed = d.players[d.state.aim_idx];
+  const ps = d.players;
+  const n = ps.length;
+  const aimIdx = d.state.aim_idx || 0;
+  const aimed = ps[aimIdx];
+  const turnP = ps.find((p) => p.is_turn);
   $("mp-hud-round").textContent = `🎯 ${aimed ? aimed.name : "-"}`;
   $("mp-hud-mid").textContent = `조작 ${d.state.swap_gauge}/6`;
   $("mp-hud-right").textContent = `크레딧 ${me.credits}C`;
 
+  // Compute firing order mapping for #1 ~ #16
+  const mySlots = [];
+  let myDanger = false;
+  const orderRows = d.state.chambers.map((c, i) => {
+    const targetP = ps[(aimIdx + i) % n];
+    const isMeTarget = targetP && targetP.id === d.viewer_id;
+    if (isMeTarget) {
+      mySlots.push(`#${i + 1}`);
+      if (c.known && c.bullet) myDanger = true;
+    }
+    const isSel = mpSel.rrSlot === i;
+    const isNextSel = (mpSel.rrSlot + 1) % 16 === i;
+    let statusHtml = `<span class="rr-st unk">❓ 미조사</span>`;
+    let rowCls = "";
+    if (c.known) {
+      if (c.bullet) {
+        statusHtml = `<span class="rr-st bullet">${c.priv ? "🕵️" : ""}💥 실탄</span>`;
+        rowCls += " is-bullet";
+      } else {
+        statusHtml = `<span class="rr-st safe">${c.priv ? "🕵️" : ""}○ 공포</span>`;
+        rowCls += " is-safe";
+      }
+    }
+    if (isMeTarget) rowCls += " is-me";
+    if (isSel) rowCls += " is-sel";
+    else if (isNextSel) rowCls += " is-pair";
+
+    const tag = i === 0 ? "🎯 " : "";
+    const meTag = isMeTarget ? `<span class="rr-me-tag">나</span>` : "";
+    const deadTag = targetP && targetP.dead ? " 💀" : "";
+    return `<tr class="${rowCls.trim()}" onclick="mpSel.rrSlot=${i};renderMp()">
+      <th scope="row">${isSel ? "▶" : isNextSel ? "└" : ""} #${i + 1}</th>
+      <td class="rr-td-name">${tag}${targetP ? targetP.name : "-"}${meTag}${deadTag}</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }).join("");
+
+  const selTarget = ps[(aimIdx + mpSel.rrSlot) % n];
   const cx = 110, cy = 110, r = 82;
   const nodes = d.state.chambers.map((c, i) => {
     const angle = ((i / 16) * Math.PI * 2) - Math.PI / 2;
     const x = cx + r * Math.cos(angle);
     const y = cy + r * Math.sin(angle);
     const isSel = mpSel.rrSlot === i;
-    const fill = c.known ? (c.bullet ? "#c0392b" : "#1e6b44") : "#1a1b24";
-    const stroke = isSel ? "#f7df8c" : (c.known ? (c.bullet ? "#ff6b6b" : "#5ee695") : "rgba(255,255,255,0.22)");
+    const isPair = (mpSel.rrSlot + 1) % 16 === i;
+    const targetP = ps[(aimIdx + i) % n];
+    const isMeTarget = targetP && targetP.id === d.viewer_id;
+    const fill = c.known ? (c.bullet ? "#c0392b" : "#1e6b44") : (isMeTarget ? "#2b2416" : "#1a1b24");
+    const stroke = isSel ? "#f7df8c" : isPair ? "#ffd43b" : (c.known ? (c.bullet ? "#ff6b6b" : "#5ee695") : (isMeTarget ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.22)"));
     const label = c.known ? (c.bullet ? "●" : "○") : (i + 1);
     return `<g class="rr-chamber-node" onclick="mpSel.rrSlot=${i};renderMp()">
-      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isSel ? 13 : 11}" fill="${fill}" stroke="${stroke}" stroke-width="${isSel ? 2.5 : 1.5}"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isSel ? 13 : 11}" fill="${fill}" stroke="${stroke}" stroke-width="${isSel ? 2.5 : isPair ? 1.8 : 1.5}"/>
       <text x="${x.toFixed(1)}" y="${(y + 3.5).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#fff">${label}</text>
     </g>`;
   }).join("");
@@ -407,22 +452,65 @@ function renderMpRoulette(d, me, board, ctrl, isHost) {
   const cylSvg = `<div class="rr-cylinder-wrap">
     <svg class="rr-cylinder-svg" viewBox="0 0 220 220">
       <circle cx="110" cy="110" r="98" fill="#101016" stroke="rgba(255,92,92,0.4)" stroke-width="2"/>
-      <circle cx="110" cy="110" r="34" fill="#181822" stroke="rgba(212,175,55,0.45)" stroke-width="1.5"/>
-      <text x="110" y="106" text-anchor="middle" font-size="10" font-weight="800" fill="#aaa">선택 약실</text>
-      <text x="110" y="123" text-anchor="middle" font-size="16" font-weight="900" fill="#f7df8c">#${mpSel.rrSlot + 1}</text>
+      <circle cx="110" cy="110" r="39" fill="#181822" stroke="rgba(212,175,55,0.45)" stroke-width="1.5"/>
+      <text x="110" y="99" text-anchor="middle" font-size="9" font-weight="800" fill="#aaa">선택 #${mpSel.rrSlot + 1}·#${(mpSel.rrSlot + 1) % 16 + 1}</text>
+      <text x="110" y="116" text-anchor="middle" font-size="13" font-weight="900" fill="#f7df8c">${selTarget ? selTarget.name : "-"}</text>
+      <text x="110" y="129" text-anchor="middle" font-size="8.5" font-weight="700" fill="#888">시계방향 격발</text>
       ${nodes}
     </svg>
   </div>`;
 
-  board.innerHTML = `
-    <div class="rr-players-row">${d.players.map((p) => `<div class="rr-p ${p.dead ? "dead" : p.is_aimed ? "aimed" : ""}">${p.is_turn ? "⚡" : ""}${p.name}${p.dead ? "💀" : p.passed ? "✋" : ""}</div>`).join("")}</div>
-    ${cylSvg}`;
+  const turnOrderHtml = `<div class="rr-turn-block">
+    <div class="rr-mini-title">🔄 행동 턴 순서 (좌→우 순환)</div>
+    <div class="rr-players-row">${ps.map((p, idx) => `
+      <div class="rr-p ${p.dead ? "dead" : p.is_aimed ? "aimed" : ""} ${p.is_turn ? "turn-now" : ""}">
+        <span class="rr-p-idx">${idx + 1}</span>
+        <span>${p.is_turn ? "⚡" : ""}${p.name}</span>
+        ${p.is_aimed ? `<span title="현재 1번 조준">🎯</span>` : ""}
+        ${p.dead ? "💀" : p.passed ? "✋" : ""}
+      </div>`).join("")}</div>
+  </div>`;
+
+  const orderTableHtml = `<div class="rr-right">
+    <div class="rr-order-head">
+      <div id="rr-order-caption" class="rr-order-title">🎯 실시간 격발 순서표 (#1~#16)</div>
+      <div class="rr-my-slots ${myDanger ? "danger" : ""}">
+        ${myDanger ? "🚨 내 약실 실탄 위험! · " : ""}내 약실: <strong>${mySlots.join(", ") || "-"}</strong>
+      </div>
+    </div>
+    <div tabindex="0" role="region" aria-labelledby="rr-order-caption" class="rr-table-wrap">
+      <table class="rr-order-table">
+        <thead>
+          <tr>
+            <th scope="col">약실</th>
+            <th scope="col">격발 대상</th>
+            <th scope="col">상태</th>
+          </tr>
+        </thead>
+        <tbody>${orderRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+
+  board.innerHTML = `<div class="rr-layout">
+    <div class="rr-left">
+      ${turnOrderHtml}
+      ${cylSvg}
+    </div>
+    ${orderTableHtml}
+  </div>`;
+
   if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
   if (!me.is_turn) {
-    ctrl.innerHTML = `<div class="wait-pill">⏳ 다른 플레이어의 차례입니다...</div>`;
+    ctrl.innerHTML = `<div class="wait-pill">⏳ ${turnP ? `${turnP.is_ai ? "🤖 " : ""}${turnP.name}님의 차례를 진행 중...` : "다음 단계 대기 중..."}</div>`;
     return;
   }
+  const nextAim1 = ps[(aimIdx + 1) % n];
+  const nextAim2 = ps[(aimIdx + 2) % n];
   ctrl.innerHTML = `
+    <div class="rr-rot-hint">
+      선택: <strong>#${mpSel.rrSlot + 1} &amp; #${(mpSel.rrSlot + 1) % 16 + 1}</strong> · 🔄+1 시 1번→<strong>${nextAim1 ? nextAim1.name : "-"}</strong> · 🔄+2 시 1번→<strong>${nextAim2 ? nextAim2.name : "-"}</strong>
+    </div>
     <div class="action-row cols-2">
       <button class="act-btn act-call" ${me.credits < 1 ? "disabled" : ""} onclick="mpSend({action:'pub',slot:mpSel.rrSlot})">👁️ 공개조사(1C)</button>
       <button class="act-btn act-stay" ${me.credits < 2 ? "disabled" : ""} onclick="mpSend({action:'priv',slot:mpSel.rrSlot})">🕵️ 비공개(2C)</button>

@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="apple-touch-icon" href="/static/favicon.svg" />
   <title>Party Deck — THE DEVIL'S PLAN</title>
-  <link rel="stylesheet" href="/static/style.css?v=4.0" />
+  <link rel="stylesheet" href="/static/style.css?v=4.1" />
 </head>
 
 <body>
@@ -45,7 +45,14 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v4.0 <span>방금 전</span></div>
+          <div class="patch-ver">v4.1 <span>방금 전</span></div>
+          <ul>
+            <li><strong>〈러시안 룰렛〉 우측 실시간 격발 순서표(#1~#16) 추가!</strong> — 총구 회전 시 누가 몇 번 약실을 맞는지·내 담당 약실·실탄 경고를 실시간으로 표시 &amp; 표 클릭 선택 지원</li>
+            <li><strong>전체 게임 AI 자연스러운 턴 페이싱 적용</strong> — 모든 AI가 즉시 넘어가지 않고 <strong>0.55~0.95초</strong> 간격으로 한 명씩 차례대로 행동!</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v4.0</div>
           <ul>
             <li><strong>갤러리 카드 그리드(Gallery Card Grid) UI 전면 업그레이드</strong>: 모바일 2열 · 태블릿 3열 · 데스크톱 4열 반응형 쇼케이스 카드 레이아웃 적용</li>
             <li><strong>CSS Subgrid &amp; Container Queries</strong> 적용으로 카드별 미디어 배너·제목·설명·버튼 라인 완벽 정렬 + <code>?v=4.0</code> 캐시 무효화 적용</li>
@@ -1008,7 +1015,8 @@
           <div id="cs-status" class="st-badge ok" style="width:fit-content;">멀티플레이 가능</div>
           <p id="cs-desc" class="slide-desc"></p>
           <ul id="cs-rules-list" class="cs-rules-list"></ul>
-          <button id="btn-cs-play" type="button" class="btn btn-gold btn-lg hidden" style="margin-top:4px;">🚀 바로 플레이하기 ▶</button>
+          <button id="btn-cs-play" type="button" class="btn btn-gold btn-lg hidden" style="margin-top:4px;">🚀 바로 플레이하기
+            ▶</button>
           <div id="cs-soon-note" class="cs-note hidden">💡 원하시는 게임을 말씀해 주시면 우선순위로 바로 구현해 추가해 드립니다!</div>
         </div>
       </div>
@@ -1189,12 +1197,12 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=4.0"></script>
-  <script src="/static/games_day1.js?v=4.0"></script>
-  <script src="/static/games_day2.js?v=4.0"></script>
-  <script src="/static/games_day3.js?v=4.0"></script>
-  <script src="/static/games_final.js?v=4.0"></script>
-  <script src="/static/mp_hub.js?v=4.0"></script>
+  <script src="/static/app.js?v=4.1"></script>
+  <script src="/static/games_day1.js?v=4.1"></script>
+  <script src="/static/games_day2.js?v=4.1"></script>
+  <script src="/static/games_day3.js?v=4.1"></script>
+  <script src="/static/games_final.js?v=4.1"></script>
+  <script src="/static/mp_hub.js?v=4.1"></script>
 </body>
 
 </html>

@@ -741,7 +741,7 @@ class GameRoom:
 
     def _schedule_next_ai(self):
         if self.is_ai_pending():
-            self.next_ai_at = time.time() + 0.65
+            self.next_ai_at = time.time() + random.uniform(0.6, 0.95)
         else:
             self.next_ai_at = 0.0
 
@@ -1260,11 +1260,14 @@ async def mp_join(payload: dict):
 
 @app.get("/api/mp/{room_id}")
 async def mp_get(room_id: str, player_id: str):
-    room = STORE.get_json(f"hs:mp:{room_id.upper()}")
+    key = f"hs:mp:{room_id.upper()}"
+    room = STORE.get_json(key)
     if not room:
         return JSONResponse({"error": "방을 찾을 수 없습니다."}, status_code=404)
     if not any(p["id"] == player_id for p in room["players"]):
         return JSONResponse({"error": "권한이 없습니다."}, status_code=403)
+    if mp_engine.maybe_step_mp_ai(room):
+        STORE.set_json(key, room)
     return JSONResponse({"data": mp_engine.serialize_mp_room(room, player_id)})
 
 

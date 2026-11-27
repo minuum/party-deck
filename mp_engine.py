@@ -3,6 +3,7 @@ import math
 import os
 import random
 import string
+import time
 import urllib.request
 from typing import Dict, List, Optional, Tuple
 
@@ -768,36 +769,100 @@ def _act_exchange(room: dict, me: dict, payload: dict):
     return None
 
 
+def _schedule_mp_ai(room: dict, delay: Optional[float] = None):
+    if room.get("phase") != "PLAYING":
+        room["ai_next_at"] = 0.0
+        return
+    d = delay if delay is not None else random.uniform(0.55, 0.95)
+    room["ai_next_at"] = time.time() + d
+
+
+def maybe_step_mp_ai(room: dict) -> bool:
+    """Step at most ONE AI action when its natural delay (0.55~0.95s) has elapsed."""
+    if room.get("phase") != "PLAYING":
+        return False
+    due = float(room.get("ai_next_at") or 0.0)
+    if due <= 0.0 or time.time() < due:
+        return False
+    room["ai_next_at"] = 0.0
+    gt = room["game_type"]
+    if gt == "russian_roulette":
+        return _rr_step_one_ai(room)
+    elif gt == "piggy_bank":
+        return _pb_step_one_ai(room)
+    elif gt == "wall_go_2":
+        return _wg_step_one_ai(room)
+    elif gt == "hidden_word":
+        return _hw_step_one_ai(room)
+    elif gt == "gradation":
+        return _gr_step_one_ai(room)
+    elif gt == "card_janggi":
+        return _cj_step_one_ai(room)
+    elif gt == "color_link":
+        return _cl_step_one_ai(room)
+    return False
+
+
 def _rr_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
-    guard = 0
-    while room["phase"] == "PLAYING" and guard < 12:
-        guard += 1
-        if all(p["passed"] or p["credits"] <= 0 for p in ps):
-            _rr_fire_all(room)
-            return
+    if room["phase"] != "PLAYING":
+        room["ai_next_at"] = 0.0
+        return
+    if all(p["passed"] or p["credits"] <= 0 for p in ps):
+        room["banner"] = "🔫 모든 크레딧 종료! 곧 16약실 격발을 시작합니다..."
+        _schedule_mp_ai(room, 0.75)
+        return
+    for _ in range(len(ps)):
         curr = ps[st["turn_idx"]]
         if curr["passed"] or curr["credits"] <= 0:
             st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
-            continue
-        if not curr["is_ai"]:
-            return
-        # AI takes 1 action
-        if curr["credits"] >= 3 and random.random() < 0.35:
-            curr["credits"] -= 3
-            st["aim_idx"] = (st["aim_idx"] + 1) % len(ps)
-            room["log"] = f"🤖 {curr['name']} 총구 +1칸 회전!"
-        elif curr["credits"] >= 1 and random.random() < 0.55:
-            curr["credits"] -= 1
-            s1 = random.randint(0, 15)
-            st["chambers"][s1]["pub"] = True
-            st["chambers"][(s1 + 1) % 16]["pub"] = True
-            room["log"] = f"🤖 {curr['name']} #{s1+1}, #{(s1+1)%16+1} 공개 조사!"
         else:
-            curr["passed"] = True
-            room["log"] = f"🤖 {curr['name']} 크레딧 종료(패스)"
-        st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
+            break
+    curr = ps[st["turn_idx"]]
+    if curr["is_ai"]:
+        _schedule_mp_ai(room)
+    else:
+        room["ai_next_at"] = 0.0
+
+
+def _rr_step_one_ai(room: dict) -> bool:
+    st = room["state"]
+    ps = room["players"]
+    if room["phase"] != "PLAYING":
+        return False
+    if all(p["passed"] or p["credits"] <= 0 for p in ps):
+        _rr_fire_all(room)
+        return True
+    for _ in range(len(ps)):
+        curr = ps[st["turn_idx"]]
+        if curr["passed"] or curr["credits"] <= 0:
+            st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
+        else:
+            break
+    curr = ps[st["turn_idx"]]
+    if not curr["is_ai"]:
+        return False
+    # AI takes 1 action
+    if curr["credits"] >= 3 and random.random() < 0.35:
+        curr["credits"] -= 3
+        st["aim_idx"] = (st["aim_idx"] + 1) % len(ps)
+        room["log"] = f"🤖 {curr['name']} 총구 +1칸 회전 → 🎯 {ps[st['aim_idx']]['name']}"
+        room["banner"] = room["log"]
+    elif curr["credits"] >= 1 and random.random() < 0.55:
+        curr["credits"] -= 1
+        s1 = random.randint(0, 15)
+        st["chambers"][s1]["pub"] = True
+        st["chambers"][(s1 + 1) % 16]["pub"] = True
+        room["log"] = f"🤖 {curr['name']} #{s1+1}, #{(s1+1)%16+1} 공개 조사!"
+        room["banner"] = room["log"]
+    else:
+        curr["passed"] = True
+        room["log"] = f"🤖 {curr['name']} 크레딧 종료(패스)"
+        room["banner"] = room["log"]
+    st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
+    _rr_advance_ai(room)
+    return True
 
 
 def _rr_fire_all(room: dict):
@@ -915,38 +980,51 @@ def _act_gem_market(room: dict, me: dict, payload: dict):
 def _pb_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
-    guard = 0
-    while room["phase"] == "PLAYING" and guard < 8:
-        guard += 1
-        if st["sub_phase"] == "PUT":
-            actor = ps[st["turn_idx"]]
-            if not actor["is_ai"]:
-                return
-            col = random.choice(["black", "white"])
-            cnt = random.randint(1, 4)
-            st["banks"][st["active_bank"]][col] += cnt
-            others = [i for i in range(len(ps)) if i != st["turn_idx"]]
-            st["responder_idx"] = random.choice(others)
-            st["sub_phase"] = "ANSWER"
-            room["banner"] = f"🤖 {actor['name']}이(가) #{st['active_bank']+1}에 {'⚫' if col=='black' else '⚪'} {cnt}개 투입 → {ps[st['responder_idx']]['name']} 지목!"
-        elif st["sub_phase"] == "ANSWER":
-            resp = ps[st["responder_idx"]]
-            if not resp["is_ai"]:
-                return
-            actual = st["banks"][st["active_bank"]][st["ask_color"]]
-            wrong = random.random() < 0.42
-            st["claim"] = max(0, actual + random.choice([-1, 1])) if wrong else actual
-            st["sub_phase"] = "DOUBT"
-            st["doubt_votes"] = {}
-            room["banner"] = f"🤖 {resp['name']}: '#{st['active_bank']+1} {'⚫흑' if st['ask_color']=='black' else '⚪백'} 동전은 {st['claim']}개!'"
-            # If all non-responders are AI, auto-resolve
-            humans = [p for i, p in enumerate(ps) if i != st["responder_idx"] and not p["is_ai"]]
-            if not humans:
-                _pb_resolve_doubt(room, None)
-            else:
-                return
-        else:
-            return
+    if room["phase"] != "PLAYING":
+        room["ai_next_at"] = 0.0
+        return
+    if st["sub_phase"] == "PUT" and ps[st["turn_idx"]]["is_ai"]:
+        _schedule_mp_ai(room)
+    elif st["sub_phase"] == "ANSWER" and ps[st["responder_idx"]]["is_ai"]:
+        _schedule_mp_ai(room)
+    else:
+        room["ai_next_at"] = 0.0
+
+
+def _pb_step_one_ai(room: dict) -> bool:
+    st = room["state"]
+    ps = room["players"]
+    if room["phase"] != "PLAYING":
+        return False
+    if st["sub_phase"] == "PUT":
+        actor = ps[st["turn_idx"]]
+        if not actor["is_ai"]:
+            return False
+        col = random.choice(["black", "white"])
+        cnt = random.randint(1, 4)
+        st["banks"][st["active_bank"]][col] += cnt
+        others = [i for i in range(len(ps)) if i != st["turn_idx"]]
+        st["responder_idx"] = random.choice(others)
+        st["sub_phase"] = "ANSWER"
+        room["banner"] = f"🤖 {actor['name']}이(가) #{st['active_bank']+1}에 {'⚫' if col=='black' else '⚪'} {cnt}개 투입 → {ps[st['responder_idx']]['name']} 지목!"
+        _pb_advance_ai(room)
+        return True
+    if st["sub_phase"] == "ANSWER":
+        resp = ps[st["responder_idx"]]
+        if not resp["is_ai"]:
+            return False
+        actual = st["banks"][st["active_bank"]][st["ask_color"]]
+        wrong = random.random() < 0.42
+        st["claim"] = max(0, actual + random.choice([-1, 1])) if wrong else actual
+        st["sub_phase"] = "DOUBT"
+        st["doubt_votes"] = {}
+        room["banner"] = f"🤖 {resp['name']}: '#{st['active_bank']+1} {'⚫흑' if st['ask_color']=='black' else '⚪백'} 동전은 {st['claim']}개!'"
+        humans = [p for i, p in enumerate(ps) if i != st["responder_idx"] and not p["is_ai"]]
+        if not humans:
+            _pb_resolve_doubt(room, None)
+        _pb_advance_ai(room)
+        return True
+    return False
 
 
 def _pb_resolve_doubt(room: dict, doubter_id: Optional[str]):
@@ -1117,38 +1195,51 @@ def _wg_calc_territories(room: dict):
 def _wg_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
-    guard = 0
-    while room["phase"] == "PLAYING" and guard < 8:
-        guard += 1
-        curr = ps[st["turn_idx"]]
-        if not curr["is_ai"]:
-            return
-        r, c = curr["pos"]
-        dirs = [("N", (-1, 0)), ("S", (1, 0)), ("E", (0, 1)), ("W", (0, -1))]
-        valid_moves = []
-        occupied = {tuple(p["pos"]) for p in ps if p["id"] != curr["id"]}
-        for d, (dr, dc) in dirs:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < 5 and 0 <= nc < 5 and (nr, nc) not in occupied and not _wg_has_wall(st["walls"], r, c, d):
-                valid_moves.append((nr, nc))
-        if valid_moves:
-            nr, nc = random.choice(valid_moves)
-            curr["pos"] = [nr, nc]
-        # Place random wall around new pos
-        r2, c2 = curr["pos"]
-        w_opts = [d for d, (dr, dc) in dirs if 0 <= r2 + dr < 5 and 0 <= c2 + dc < 5 and not _wg_has_wall(st["walls"], r2, c2, d)]
-        if w_opts:
-            wd = random.choice(w_opts)
-            st["walls"].append(f"{r2},{c2},{wd}")
-        _wg_calc_territories(room)
-        room["round"] += 1
-        if room["round"] > st["max_rounds"]:
-            room["phase"] = "DONE"
-            champ = max(ps, key=lambda x: x["territory"])
-            room["banner"] = f"🏆 벽바둑 2 우승: {champ['name']} (영토 {champ['territory']}칸!)"
-            return
-        st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
-        room["banner"] = f"🧱 {ps[st['turn_idx']]['name']}님 차례! 이동할 칸과 벽 방향을 선택하세요."
+    if room["phase"] != "PLAYING":
+        room["ai_next_at"] = 0.0
+        return
+    if ps[st["turn_idx"]]["is_ai"]:
+        _schedule_mp_ai(room)
+    else:
+        room["ai_next_at"] = 0.0
+
+
+def _wg_step_one_ai(room: dict) -> bool:
+    st = room["state"]
+    ps = room["players"]
+    if room["phase"] != "PLAYING":
+        return False
+    curr = ps[st["turn_idx"]]
+    if not curr["is_ai"]:
+        return False
+    r, c = curr["pos"]
+    dirs = [("N", (-1, 0)), ("S", (1, 0)), ("E", (0, 1)), ("W", (0, -1))]
+    valid_moves = []
+    occupied = {tuple(p["pos"]) for p in ps if p["id"] != curr["id"]}
+    for d, (dr, dc) in dirs:
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < 5 and 0 <= nc < 5 and (nr, nc) not in occupied and not _wg_has_wall(st["walls"], r, c, d):
+            valid_moves.append((nr, nc))
+    if valid_moves:
+        nr, nc = random.choice(valid_moves)
+        curr["pos"] = [nr, nc]
+    r2, c2 = curr["pos"]
+    w_opts = [d for d, (dr, dc) in dirs if 0 <= r2 + dr < 5 and 0 <= c2 + dc < 5 and not _wg_has_wall(st["walls"], r2, c2, d)]
+    if w_opts:
+        wd = random.choice(w_opts)
+        st["walls"].append(f"{r2},{c2},{wd}")
+    _wg_calc_territories(room)
+    room["round"] += 1
+    if room["round"] > st["max_rounds"]:
+        room["phase"] = "DONE"
+        champ = max(ps, key=lambda x: x["territory"])
+        room["banner"] = f"🏆 벽바둑 2 우승: {champ['name']} (영토 {champ['territory']}칸!)"
+        room["ai_next_at"] = 0.0
+        return True
+    st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
+    room["banner"] = f"🧱 {curr['name']} 이동 & 벽 설치! 다음: {ps[st['turn_idx']]['name']}"
+    _wg_advance_ai(room)
+    return True
 
 
 def _act_wall_go(room: dict, me: dict, payload: dict):
@@ -1189,11 +1280,23 @@ def _act_wall_go(room: dict, me: dict, payload: dict):
 def _hw_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
+    if room["phase"] != "PLAYING":
+        room["ai_next_at"] = 0.0
+        return
+    setter = ps[st["setter_idx"]]
+    if st["sub_phase"] == "PICK_SECRET" and setter["is_ai"]:
+        _schedule_mp_ai(room)
+    else:
+        room["ai_next_at"] = 0.0
+
+
+def _hw_step_one_ai(room: dict) -> bool:
+    st = room["state"]
+    ps = room["players"]
     setter = ps[st["setter_idx"]]
     if st["sub_phase"] == "PICK_SECRET" and setter["is_ai"]:
         st["secret"] = random.choice(st["envelope"])
         st["sub_phase"] = "HINT"
-        # AI setter gives 3 strategic Korean noun hints automatically
         bank = list(HW_HINTS_BANK.get(st["secret"], ["자연", "사물", "일상"]))
         random.shuffle(bank)
         for hw in bank[:3]:
@@ -1203,6 +1306,8 @@ def _hw_advance_ai(room: dict):
         st["sub_phase"] = "GUESS"
         room["banner"] = f"🤖 출제자 {setter['name']}이(가) 힌트 {len(st['hints'])}개를 공개했습니다! 히든 워드를 유추하세요!"
         room["log"] = "힌트와 AI 유사도(%)를 보고 정확한 한글 명사를 제출하세요!"
+        return True
+    return False
 
 
 def _act_hidden_word(room: dict, me: dict, payload: dict):
@@ -1394,9 +1499,10 @@ def _gr_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
     if room["phase"] != "PLAYING":
+        room["ai_next_at"] = 0.0
         return
 
-    # AI Setup
+    # AI Setup immediately prepares its hidden cups
     if st["sub_phase"] == "SETUP":
         for p in ps:
             if p["is_ai"] and not p["setup_done"]:
@@ -1407,39 +1513,53 @@ def _gr_advance_ai(room: dict):
             st["sub_phase"] = "LEAD_PICK"
             room["banner"] = f"⚔️ 배치 완료! R1 선공 [{ps[st['lead_idx']]['name']}]님이 낼 통 1개를 선택하세요!"
 
-    guard = 0
-    while room["phase"] == "PLAYING" and guard < 6:
-        guard += 1
-        lead_i = st["lead_idx"]
-        follow_i = 1 - lead_i
-        if st["sub_phase"] == "LEAD_PICK":
-            actor = ps[lead_i]
-            if not actor["is_ai"]:
-                return
-            avail = [c for c in actor["cups"] if not c["used"]]
-            if not avail:
-                return
-            pick = random.choice(avail)
-            st["lead_cup_idx"] = pick["idx"]
-            st["sub_phase"] = "FOLLOW_PICK"
-            room["banner"] = f"🤖 선공 {actor['name']}이(가) [{GR_COLOR_KR[pick['color']]}] 통을 냈습니다! 대응할 통을 고르세요!"
-        elif st["sub_phase"] == "FOLLOW_PICK":
-            actor = ps[follow_i]
-            if not actor["is_ai"]:
-                return
-            avail = [c for c in actor["cups"] if not c["used"]]
-            if not avail:
-                return
-            lvl = actor.get("ai_level", "normal")
-            lead_cup = ps[lead_i]["cups"][st["lead_cup_idx"]]
-            # Devil/Pro estimates based on color & plays strategically
-            if lvl in ("pro", "devil"):
-                pick = max(avail, key=lambda c: c["val"]) if lead_cup["color"] in ("black", "darkgray") and random.random() < 0.6 else random.choice(avail)
-            else:
-                pick = random.choice(avail)
-            _gr_resolve_round(room, pick["idx"])
+    lead_i = st["lead_idx"]
+    follow_i = 1 - lead_i
+    if (st["sub_phase"] == "LEAD_PICK" and ps[lead_i]["is_ai"]) or (
+        st["sub_phase"] == "FOLLOW_PICK" and ps[follow_i]["is_ai"]
+    ):
+        _schedule_mp_ai(room)
+    else:
+        room["ai_next_at"] = 0.0
+
+
+def _gr_step_one_ai(room: dict) -> bool:
+    st = room["state"]
+    ps = room["players"]
+    if room["phase"] != "PLAYING":
+        return False
+    lead_i = st["lead_idx"]
+    follow_i = 1 - lead_i
+    if st["sub_phase"] == "LEAD_PICK":
+        actor = ps[lead_i]
+        if not actor["is_ai"]:
+            return False
+        avail = [c for c in actor["cups"] if not c["used"]]
+        if not avail:
+            return False
+        pick = random.choice(avail)
+        st["lead_cup_idx"] = pick["idx"]
+        st["sub_phase"] = "FOLLOW_PICK"
+        room["banner"] = f"🤖 선공 {actor['name']}이(가) [{GR_COLOR_KR[pick['color']]}] 통을 냈습니다! 대응할 통을 고르세요!"
+        _gr_advance_ai(room)
+        return True
+    if st["sub_phase"] == "FOLLOW_PICK":
+        actor = ps[follow_i]
+        if not actor["is_ai"]:
+            return False
+        avail = [c for c in actor["cups"] if not c["used"]]
+        if not avail:
+            return False
+        lvl = actor.get("ai_level", "normal")
+        lead_cup = ps[lead_i]["cups"][st["lead_cup_idx"]]
+        if lvl in ("pro", "devil"):
+            pick = max(avail, key=lambda c: c["val"]) if lead_cup["color"] in ("black", "darkgray") and random.random() < 0.6 else random.choice(avail)
         else:
-            return
+            pick = random.choice(avail)
+        _gr_resolve_round(room, pick["idx"])
+        _gr_advance_ai(room)
+        return True
+    return False
 
 
 def _gr_resolve_round(room: dict, follow_cup_idx: int):
@@ -1569,6 +1689,7 @@ def _cj_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
     if room["phase"] != "PLAYING":
+        room["ai_next_at"] = 0.0
         return
 
     if st["sub_phase"] == "CARD_ORDER":
@@ -1586,35 +1707,47 @@ def _cj_advance_ai(room: dict):
             room["banner"] = f"♟️ 첫 행마 카드 공개! {ps[0]['name']}:{c0} vs {ps[1]['name']}:{c1}"
             room["log"] = f"{ps[st['turn_idx']]['name']}님 차례! 공개된 행마 카드 규칙대로 말을 이동하세요."
 
-    if st["sub_phase"] == "MOVE":
-        ci = st["turn_idx"]
-        curr = ps[ci]
-        if not curr["is_ai"]:
-            return
-        card = curr["deck_order"][curr["card_idx"]]
-        my_pieces = [x for x in st["pieces"] if x["owner"] == ci]
-        lvl = curr.get("ai_level", "normal")
-        goal_row = 0 if ci == 0 else 4
-        all_moves = []
-        for pc in my_pieces:
-            for nr, nc in _cj_valid_moves_by_card(st["pieces"], pc, card):
-                target = next((x for x in st["pieces"] if x["r"] == nr and x["c"] == nc and x["owner"] != ci), None)
-                score = 0
-                if target and target["big"]:
-                    score = 1000
-                elif pc["big"] and nr == goal_row:
-                    score = 900
-                elif target:
-                    score = 50
-                else:
-                    score = (4 - abs(nr - goal_row)) * (3 if lvl in ("pro", "devil") else 1) + random.randint(0, 3)
-                if lvl == "easy":
-                    score = random.randint(0, 10)
-                all_moves.append((score, pc, nr, nc, target))
-        if all_moves:
-            all_moves.sort(key=lambda x: x[0], reverse=True)
-            _, pc, nr, nc, target = all_moves[0]
-            _cj_apply_move(room, ci, pc, nr, nc, target)
+    if st["sub_phase"] == "MOVE" and ps[st["turn_idx"]]["is_ai"]:
+        _schedule_mp_ai(room)
+    else:
+        room["ai_next_at"] = 0.0
+
+
+def _cj_step_one_ai(room: dict) -> bool:
+    st = room["state"]
+    ps = room["players"]
+    if room["phase"] != "PLAYING" or st["sub_phase"] != "MOVE":
+        return False
+    ci = st["turn_idx"]
+    curr = ps[ci]
+    if not curr["is_ai"]:
+        return False
+    card = curr["deck_order"][curr["card_idx"]]
+    my_pieces = [x for x in st["pieces"] if x["owner"] == ci]
+    lvl = curr.get("ai_level", "normal")
+    goal_row = 0 if ci == 0 else 4
+    all_moves = []
+    for pc in my_pieces:
+        for nr, nc in _cj_valid_moves_by_card(st["pieces"], pc, card):
+            target = next((x for x in st["pieces"] if x["r"] == nr and x["c"] == nc and x["owner"] != ci), None)
+            score = 0
+            if target and target["big"]:
+                score = 1000
+            elif pc["big"] and nr == goal_row:
+                score = 900
+            elif target:
+                score = 50
+            else:
+                score = (4 - abs(nr - goal_row)) * (3 if lvl in ("pro", "devil") else 1) + random.randint(0, 3)
+            if lvl == "easy":
+                score = random.randint(0, 10)
+            all_moves.append((score, pc, nr, nc, target))
+    if all_moves:
+        all_moves.sort(key=lambda x: x[0], reverse=True)
+        _, pc, nr, nc, target = all_moves[0]
+        _cj_apply_move(room, ci, pc, nr, nc, target)
+        return True
+    return False
 
 
 def _cj_apply_move(room: dict, ci: int, pc: dict, nr: int, nc: int, target: Optional[dict]):
@@ -1723,21 +1856,35 @@ def _cl_advance_ai(room: dict):
     st = room["state"]
     ps = room["players"]
     if room["phase"] != "PLAYING":
+        room["ai_next_at"] = 0.0
         return
+    if (st["sub_phase"] == "PLACE" and ps[st["turn_idx"]]["is_ai"]) or (
+        st["sub_phase"] == "PROOF" and ps[st["defender_idx"]]["is_ai"]
+    ):
+        _schedule_mp_ai(room)
+    else:
+        room["ai_next_at"] = 0.0
+
+
+def _cl_step_one_ai(room: dict) -> bool:
+    st = room["state"]
+    ps = room["players"]
+    if room["phase"] != "PLAYING":
+        return False
     if st["sub_phase"] == "PLACE":
         ci = st["turn_idx"]
         curr = ps[ci]
         if not curr["is_ai"]:
-            return
+            return False
         avail_colors = [c for c, cnt in st["placed_counts"].items() if cnt < 2]
         empties = [i for i, v in enumerate(st["board"]) if v is None]
         if not avail_colors or not empties:
-            # All 5 pairs placed -> enter PROOF by last mover
             st["sub_phase"] = "PROOF"
             st["declarer_idx"] = 1 - ci
             st["defender_idx"] = ci
             room["banner"] = "🔗 모든 5쌍 배치 완료! 이제 겹치지 않고 각 6칸↑ 연결을 증명하세요!"
-            return
+            _cl_advance_ai(room)
+            return True
         col = avail_colors[0]
         cell = random.choice(empties)
         st["board"][cell] = col
@@ -1745,10 +1892,11 @@ def _cl_advance_ai(room: dict):
         room["round"] += 1
         st["turn_idx"] = 1 - ci
         room["banner"] = f"🤖 {curr['name']}이(가) [{col}] 말을 배치했습니다! 다음: {ps[st['turn_idx']]['name']}"
-    elif st["sub_phase"] == "PROOF":
+        _cl_advance_ai(room)
+        return True
+    if st["sub_phase"] == "PROOF":
         def_i = st["defender_idx"]
         if ps[def_i]["is_ai"]:
-            # AI defender attempts proof (succeeds if board has plenty of space & high AI tier)
             lvl = ps[def_i].get("ai_level", "normal")
             placed_pairs = sum(1 for v in st["placed_counts"].values() if v == 2)
             win_prob = 0.72 if lvl in ("pro", "devil") else 0.45
@@ -1758,6 +1906,9 @@ def _cl_advance_ai(room: dict):
             else:
                 room["phase"] = "DONE"
                 room["banner"] = f"🏆 불가능 선언 적중! {ps[st['declarer_idx']]['name']} 결승 2회전 우승!"
+            room["ai_next_at"] = 0.0
+            return True
+    return False
 
 
 def _act_color_link(room: dict, me: dict, payload: dict):
