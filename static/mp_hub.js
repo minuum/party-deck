@@ -823,29 +823,102 @@ function renderMpGradation(d, me, board, ctrl, isHost) {
     </div>`;
 }
 
-// --- 12. 카드 장기 (Card Janggi 4x4) ---
+// --- 12. 카드 장기 (Original Finals R1: 5x5 + 5 Animal Move Cards) ---
+const CJ_CARD_UI = {
+  mouse: "🐭쥐(상하좌우1)",
+  horse: "🐴말(2+1)",
+  monkey: "🐵원숭이(8방1)",
+  elephant: "🐘코끼리(대각1~2)",
+  giraffe: "🦒기린(상하좌우2)",
+};
+const CJ_ALL_KEYS = ["mouse", "horse", "monkey", "elephant", "giraffe"];
+let cjOrderDraft = [];
+
+function cjValidCells(pieces, pc, card) {
+  if (!pc || !card) return new Set();
+  const f = new Set(pieces.filter((x) => x.owner === pc.owner).map((x) => `${x.r},${x.c}`));
+  const deltas =
+    card === "mouse" ? [[-1,0],[1,0],[0,-1],[0,1]] :
+    card === "horse" ? [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[-1,2],[1,-2],[1,2]] :
+    card === "monkey" ? [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]] :
+    card === "elephant" ? [[-1,-1],[-1,1],[1,-1],[1,1],[-2,-2],[-2,2],[2,-2],[2,2]] :
+    [[-2,0],[2,0],[0,-2],[0,2]];
+  const out = new Set();
+  deltas.forEach(([dr, dc]) => {
+    const nr = pc.r + dr, nc = pc.c + dc;
+    if (nr >= 0 && nr < 5 && nc >= 0 && nc < 5 && !f.has(`${nr},${nc}`)) out.add(`${nr},${nc}`);
+  });
+  return out;
+}
+
+function cjToggleDraft(k, need) {
+  const i = cjOrderDraft.indexOf(k);
+  if (i >= 0) cjOrderDraft.splice(i, 1);
+  else if (cjOrderDraft.length < need) cjOrderDraft.push(k);
+  renderMp();
+}
+
+function cjRandDraft(need) {
+  const arr = [...CJ_ALL_KEYS].sort(() => Math.random() - 0.5);
+  cjOrderDraft = arr.slice(0, need);
+  if (typeof SFX !== "undefined") SFX.dice();
+  renderMp();
+}
+
 function renderMpCardJanggi(d, me, board, ctrl, isHost) {
+  const st = d.state;
   const myIdx = d.players.findIndex((p) => p.id === d.viewer_id);
-  $("mp-hud-round").textContent = `턴 ${d.round}`;
-  $("mp-hud-mid").textContent = myIdx === 0 ? "🔵 아래 진영" : "🔴 위 진영";
-  $("mp-hud-right").textContent = me.is_turn ? "⚡ 내 차례" : "상대 차례";
-  const pieces = d.state.pieces || [];
+  const opp = d.players[1 - myIdx];
+  $("mp-hud-round").textContent = st.sub_phase === "CARD_ORDER" ? "카드 배치" : `턴 ${d.round}`;
+  $("mp-hud-mid").textContent = myIdx === 0 ? "🔵 아래 진영 (위 끝줄 목표)" : "🔴 위 진영 (아래 끝줄 목표)";
+  $("mp-hud-right").textContent = me.is_turn ? "⚡ 내 차례" : "대기";
+
+  if (st.sub_phase === "CARD_ORDER") {
+    const need = me.need_cards || 5;
+    board.innerHTML = `
+      <div class="d1-score-grid">
+        ${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name} (${p.need_cards}장)</span><strong>${p.order_done ? "✅ 완료" : "⏳ 배치 중"}</strong></div>`).join("")}
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--gold-bright);font-weight:800;">선택 순서 (${cjOrderDraft.length}/${need}): ${cjOrderDraft.map((k, i) => `${i + 1}.${CJ_CARD_UI[k].slice(0, 3)}`).join(" → ") || "아래 카드를 순서대로 터치하세요"}</div>`;
+    if (me.order_done) {
+      ctrl.innerHTML = `<div class="wait-pill">⏳ 내 행마 카드 배치 완료! 상대방 대기 중...</div>`;
+    } else {
+      ctrl.innerHTML = `
+        <div class="h13-row">${CJ_ALL_KEYS.map((k) => `<button type="button" class="h13-chip ${cjOrderDraft.includes(k) ? "selected" : ""}" onclick="cjToggleDraft('${k}',${need})">${CJ_CARD_UI[k]}</button>`).join("")}</div>
+        <div class="action-row cols-2">
+          <button type="button" class="btn btn-outline" style="padding:9px;" onclick="cjRandDraft(${need})">🎲 랜덤 순서</button>
+          <button type="button" class="btn btn-gold" style="padding:9px;" ${cjOrderDraft.length !== need ? "disabled" : ""} onclick="mpSend({action:'set_order',order:cjOrderDraft});cjOrderDraft=[];">✅ 순서 확정</button>
+        </div>`;
+    }
+    return;
+  }
+
+  const pieces = st.pieces || [];
+  const selPc = pieces.find((x) => x.id === mpSel.cjPiece && x.owner === myIdx);
+  const validSet = me.is_turn && selPc ? cjValidCells(pieces, selPc, me.current_card) : new Set();
+
   let cells = "";
-  for (let r = 0; r < 4; r++) {
-    for (let c = 0; c < 4; c++) {
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
       const pc = pieces.find((x) => x.r === r && x.c === c);
       const isSel = pc && mpSel.cjPiece === pc.id;
-      const cls = pc ? (pc.owner === 0 ? "p0" : "p1") : "";
-      cells += `<div class="cj-cell ${cls} ${isSel ? "sel" : ""}" onclick="mpCjTap(${r},${c},'${pc ? pc.id : ""}',${pc ? pc.owner : -1},${myIdx})">${pc ? pc.label : ""}</div>`;
+      const canGo = validSet.has(`${r},${c}`);
+      const cls = `${pc ? (pc.owner === 0 ? "p0" : "p1") : ""} ${r === 0 ? "goal0" : r === 4 ? "goal1" : ""} ${isSel ? "sel" : ""} ${canGo ? "can-go" : ""}`;
+      cells += `<div class="cj5-cell ${cls}" onclick="mpCjTap(${r},${c},'${pc ? pc.id : ""}',${pc ? pc.owner : -1},${myIdx})">${pc ? pc.label : (canGo ? "·" : "")}</div>`;
     }
   }
-  board.innerHTML = `<div class="cj-grid">${cells}</div>`;
+  board.innerHTML = `
+    <div class="d1-score-grid">
+      <div class="d1-pcell me"><span>내 카드</span><strong>${me.current_card ? CJ_CARD_UI[me.current_card] : "-"}</strong></div>
+      <div class="d1-pcell"><span>상대 카드</span><strong>${opp && opp.current_card ? CJ_CARD_UI[opp.current_card] : "-"}</strong></div>
+    </div>
+    <div class="cj5-grid">${cells}</div>`;
   if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
-  ctrl.innerHTML = `<div class="wait-pill">${me.is_turn ? (mpSel.cjPiece ? "🎯 이동할 목표 칸을 터치하세요!" : "♟️ 이동할 내 말을 먼저 터치하세요!") : "⏳ 상대방의 수를 기다리는 중..."}</div>`;
+  ctrl.innerHTML = `<div class="wait-pill">${me.is_turn ? (mpSel.cjPiece ? "🟢 초록 칸 중 이동할 곳을 터치하세요!" : `♟️ [${CJ_CARD_UI[me.current_card] || ""}] 이동할 내 말을 터치하세요!`) : "⏳ 상대방 차례입니다..."}</div>`;
 }
 
 function mpCjTap(r, c, pieceId, owner, myIdx) {
-  if (!mpData || mpData.phase !== "PLAYING") return;
+  if (!mpData || mpData.phase !== "PLAYING" || mpData.state.sub_phase !== "MOVE") return;
   const me = mpData.players[myIdx];
   if (!me || !me.is_turn) return;
   if (pieceId && owner === myIdx) {
@@ -855,22 +928,83 @@ function mpCjTap(r, c, pieceId, owner, myIdx) {
   } else if (mpSel.cjPiece) {
     const pid = mpSel.cjPiece;
     mpSel.cjPiece = null;
-    mpSend({ piece_id: pid, r, c });
+    mpSend({ action: "move", piece_id: pid, r, c });
   }
 }
 
-// --- 13. 컬러 링크 (Color Link 5x5) ---
+// --- 13. 컬러 링크 (Original Finals R2: 6x6 Pairs + Impossible Declaration & Proof!) ---
+const CL_COLORS = ["A", "B", "C", "D", "E"];
+const CL_LABELS = { A: "🔴A", B: "🔵B", C: "🟢C", D: "🟡D", E: "🟣E" };
+let clSelCol = "A";
+let clProofPaths = { A: [], B: [], C: [], D: [], E: [] };
+
+function clTapProofCell(idx) {
+  const path = clProofPaths[clSelCol] || [];
+  const existing = path.indexOf(idx);
+  if (existing >= 0) {
+    clProofPaths[clSelCol] = path.slice(0, existing);
+  } else {
+    clProofPaths[clSelCol] = [...path, idx];
+  }
+  if (typeof SFX !== "undefined") SFX.chip();
+  renderMp();
+}
+
 function renderMpColorLink(d, me, board, ctrl, isHost) {
-  $("mp-hud-round").textContent = `R${d.round}`;
-  $("mp-hud-mid").textContent = `목표 ${d.state.goal_chain}연결`;
-  $("mp-hud-right").textContent = `내 최장 ${me.max_chain}칸`;
-  const grid = d.state.grid || [];
-  const dots = ["🟢", "🩷", "🔵", "🟡"];
-  board.innerHTML = `
-    <div class="cl-grid">${grid.map((v, i) => `<div class="cl-cell ${v >= 0 ? `c${v % 4}` : ""}" onclick="${me.is_turn && v === -1 ? `mpSend({cell:${i}})` : ""}"></div>`).join("")}</div>
-    <div class="d1-score-grid">${d.players.map((p, i) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${dots[i % 4]} ${p.name}${p.is_turn ? " ⚡" : ""}</span><strong>${p.max_chain}연결</strong></div>`).join("")}</div>`;
+  const st = d.state;
+  const sub = st.sub_phase;
+  const placed = st.placed_counts || {};
+  $("mp-hud-round").textContent = sub === "PROOF" ? "🚨 경로 증명" : `배치 R${d.round}`;
+  $("mp-hud-mid").textContent = "길이 6칸↑ · 겹침 금지";
+  $("mp-hud-right").textContent = me.is_turn ? "⚡ 내 차례" : "대기";
+
+  // Build path overlay map for PROOF
+  const activePaths = d.phase === "DONE" ? (st.proof_paths || {}) : clProofPaths;
+  const cellPathOwner = {};
+  if (sub === "PROOF" || d.phase === "DONE") {
+    CL_COLORS.forEach((col) => {
+      (activePaths[col] || []).forEach((ci) => { cellPathOwner[ci] = col; });
+    });
+  }
+
+  const cellsHtml = (st.board || []).map((val, i) => {
+    const pCol = cellPathOwner[i];
+    const cls = val ? `col${val}` : (pCol ? `path${pCol}` : "");
+    const onclick =
+      sub === "PLACE" && me.is_turn && !val
+        ? `mpSend({action:'place',cell:${i},color:'${clSelCol}'})`
+        : (sub === "PROOF" && me.is_turn ? `clTapProofCell(${i})` : "");
+    return `<div class="cl6-cell ${cls}" onclick="${onclick}">${val || (pCol ? "•" : "")}</div>`;
+  }).join("");
+
+  board.innerHTML = `<div class="cl6-grid">${cellsHtml}</div>`;
   if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
-  ctrl.innerHTML = `<div class="wait-pill">${me.is_turn ? "🔗 빈 칸을 터치해 내 색상 체인을 연결하세요!" : "⏳ 다른 플레이어 차례입니다..."}</div>`;
+
+  if (sub === "PLACE") {
+    const avail = CL_COLORS.filter((c) => (placed[c] || 0) < 2);
+    if (avail.length && !avail.includes(clSelCol)) clSelCol = avail[0];
+    const hasPair = CL_COLORS.some((c) => (placed[c] || 0) === 2);
+    ctrl.innerHTML = `
+      <div class="h13-row">${CL_COLORS.map((c) => `<button type="button" class="h13-chip ${clSelCol === c ? "selected" : ""}" ${(placed[c] || 0) >= 2 ? "disabled" : ""} onclick="clSelCol='${c}';renderMp()">${CL_LABELS[c]} (${placed[c] || 0}/2)</button>`).join("")}</div>
+      <div class="action-row cols-2">
+        <div class="wait-pill" style="padding:9px;">${me.is_turn ? `👆 빈 칸을 눌러 ${CL_LABELS[clSelCol]} 배치` : "⏳ 상대 배치 대기 중..."}</div>
+        <button type="button" class="act-btn act-fold" ${!hasPair ? "disabled" : ""} onclick="mpSend({action:'declare_impossible'})">🚨 불가능 선언!</button>
+      </div>`;
+  } else if (sub === "PROOF") {
+    if (!me.is_turn) {
+      ctrl.innerHTML = `<div class="wait-pill">⏳ 방어자가 겹치지 않고 각 6칸↑ 연결을 증명하는 중...</div>`;
+      return;
+    }
+    const activeCols = CL_COLORS.filter((c) => (placed[c] || 0) === 2);
+    if (activeCols.length && !activeCols.includes(clSelCol)) clSelCol = activeCols[0];
+    ctrl.innerHTML = `
+      <div class="h13-row">${activeCols.map((c) => `<button type="button" class="h13-chip ${clSelCol === c ? "selected" : ""}" onclick="clSelCol='${c}';renderMp()">${CL_LABELS[c]} (${(clProofPaths[c] || []).length}/6칸)</button>`).join("")}</div>
+      <div class="action-row cols-3">
+        <button type="button" class="act-btn act-fold" onclick="mpSend({action:'give_up'})">🏳️ 포기</button>
+        <button type="button" class="act-btn" style="background:#333;" onclick="clProofPaths[clSelCol]=[];renderMp()">↺ 선 지우기</button>
+        <button type="button" class="act-btn act-hit" onclick="mpSend({action:'submit_proof',paths:clProofPaths})">✅ 증명 제출</button>
+      </div>`;
+  }
 }
 
 // --- 14. 비밀 코드 (Secret Code - 4-digit Bulls & Cows) ---
