@@ -164,8 +164,15 @@ function mpGetPollInterval() {
   if (!mpData) return 700;
   if (mpData.ai_pending) return 600;
   if (mpData.solo_mode) return null; // 1인 AI 대전: 내 차례/종료 시 폴링 완전 정지 (0 req/s)
-  if (mpData.phase === "LOBBY" || mpData.phase === "DONE") return 2200;
-  return 1800;
+  if (mpData.phase === "LOBBY" || mpData.phase === "DONE") return 2500;
+  const me = (mpData.players || []).find((p) => p.id === mpData.viewer_id);
+  if (me) {
+    // 내 차례인 턴제 또는 내가 아직 제출 전(고민 중) -> 느리게(3.5~3.8초) 절전
+    if (me.is_turn === true) return 3500;
+    if (me.submitted === false || me.ready === false) return 3800;
+  }
+  // 상대 차례 / 제출 후 다른 사람 대기 중 -> 빠르게(1.4초) 실시간 반영
+  return 1400;
 }
 
 function mpSchedulePoll() {

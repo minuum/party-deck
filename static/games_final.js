@@ -505,7 +505,7 @@ function flStartPoll() {
   flStopPoll();
   if (document.hidden || !flState || flState.mode !== "friend" || !flState.roomId || !flState.playerId) return;
   if (flState.phase === "DONE") return;
-  const ms = flState.phase === "WAITING" ? 2200 : 1800;
+  const ms = flState.phase === "WAITING" ? 2500 : (flState.myPending ? 1400 : 3500);
   flPollTimer = setTimeout(async () => {
     flPollTimer = null;
     if (document.hidden || !flState || flState.mode !== "friend") return;

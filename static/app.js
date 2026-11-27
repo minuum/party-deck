@@ -114,8 +114,13 @@ function getHsPollInterval() {
   if (!state) return 700;
   if (state.ai_pending) return 600;
   if (state.solo_mode) return null; // 1인 AI 대전: 내 차례/종료 시 폴링 정지 (0 req/s)
-  if (state.phase === "LOBBY" || state.phase === "GAME_OVER") return 2200;
-  return 1800;
+  if (state.phase === "LOBBY" || state.phase === "GAME_OVER") return 2500;
+  const me = (state.players || []).find((p) => p.id === state.viewer_id);
+  if (me) {
+    if (state.phase === "REVEAL_SELECT" && !me.revealed_initial) return 3500;
+    if (me.is_turn) return 3500;
+  }
+  return 1400;
 }
 
 function scheduleHsPoll() {

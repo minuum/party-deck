@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="apple-touch-icon" href="/static/favicon.svg" />
   <title>Party Deck — THE DEVIL'S PLAN</title>
-  <link rel="stylesheet" href="/static/style.css?v=4.3" />
+  <link rel="stylesheet" href="/static/style.css?v=4.4" />
 </head>
 
 <body>
@@ -45,7 +45,14 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v4.3 <span>방금 전</span></div>
+          <div class="patch-ver">v4.4 <span>방금 전</span></div>
+          <ul>
+            <li><strong>상황별 스마트 폴링(Turn-Aware Polling) 업그레이드!</strong></li>
+            <li>내 차례·고민 중엔 <strong>3.5~3.8초</strong> 초절전 · 상대 차례 대기 시엔 <strong>1.4초</strong> 빠른 반응 · AI 차례 <strong>0.6초</strong> · 1인전 내 차례 <strong>0 req/s</strong></li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v4.3</div>
           <ul>
             <li><strong>서버·Redis 리소스 70~90% 초절전 최적화!</strong></li>
             <li><strong>적응형 폴링</strong>(AI 차례 0.6초 · 멀티 대기 1.8초 · 대기실 2.2초) + <strong>백그라운드 탭/화면 꺼짐 시 폴링 자동 중지</strong> + <strong>1인 AI 대전 내 차례 0 req/s 무폴링</strong> 적용!</li>
@@ -54,8 +61,10 @@
         <div class="patch-item">
           <div class="patch-ver">v4.2</div>
           <ul>
-            <li><strong>〈히든 워드〉 한국어 임베딩 캘리브레이션 &amp; 90% 조기종료 최적화!</strong> — 20개 히든 워드 실측 분포 기반으로 무관어(15~25%)·핵심연상(70~86%)·스포일러(90%↑) 변별력 강화</li>
-            <li><strong>〈히든 워드〉 사람 출제 시 AI 추리자 자동 진행 버그 수정</strong> — 힌트 종료 후 AI들이 0.55~0.95초 간격으로 차례로 추리 &amp; 자동 라운드 정산!</li>
+            <li><strong>〈히든 워드〉 한국어 임베딩 캘리브레이션 &amp; 90% 조기종료 최적화!</strong> — 20개 히든 워드 실측 분포 기반으로
+              무관어(15~25%)·핵심연상(70~86%)·스포일러(90%↑) 변별력 강화</li>
+            <li><strong>〈히든 워드〉 사람 출제 시 AI 추리자 자동 진행 버그 수정</strong> — 힌트 종료 후 AI들이 0.55~0.95초 간격으로 차례로 추리 &amp; 자동 라운드
+              정산!</li>
           </ul>
         </div>
         <div class="patch-item">
@@ -1218,12 +1227,12 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=4.3"></script>
-  <script src="/static/games_day1.js?v=4.3"></script>
-  <script src="/static/games_day2.js?v=4.3"></script>
-  <script src="/static/games_day3.js?v=4.3"></script>
-  <script src="/static/games_final.js?v=4.3"></script>
-  <script src="/static/mp_hub.js?v=4.3"></script>
+  <script src="/static/app.js?v=4.4"></script>
+  <script src="/static/games_day1.js?v=4.4"></script>
+  <script src="/static/games_day2.js?v=4.4"></script>
+  <script src="/static/games_day3.js?v=4.4"></script>
+  <script src="/static/games_final.js?v=4.4"></script>
+  <script src="/static/mp_hub.js?v=4.4"></script>
 </body>
 
 </html>
