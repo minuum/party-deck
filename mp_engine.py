@@ -67,7 +67,11 @@ HW_HINTS_BANK = {
 def _gemini_embed(text: str, api_key: str) -> Optional[List[float]]:
     for model in ("gemini-embedding-001", "text-embedding-004"):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={api_key}"
-        body = json.dumps({"model": f"models/{model}", "content": {"parts": [{"text": text}]}}).encode("utf-8")
+        body = json.dumps({
+            "model": f"models/{model}",
+            "taskType": "SEMANTIC_SIMILARITY",
+            "content": {"parts": [{"text": text}]},
+        }).encode("utf-8")
         req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -97,8 +101,9 @@ def compute_korean_similarity(secret: str, word: str) -> Tuple[float, str]:
             n1 = math.sqrt(sum(a * a for a in v1))
             n2 = math.sqrt(sum(b * b for b in v2))
             cos = dot / (n1 * n2) if n1 and n2 else 0.0
-            # Scale cosine [0.35 .. 0.96] -> [5.0 .. 98.5]
-            pct = max(1.0, min(98.5, ((cos - 0.35) / 0.61) * 93.5 + 5.0))
+            # Sharpen contrast for Korean single-word SEMANTIC_SIMILARITY cosines (~0.52..0.90)
+            norm = max(0.0, min(1.0, (cos - 0.52) / 0.38))
+            pct = 5.0 + (norm ** 1.25) * 93.5
             return round(pct, 1), "gemini"
 
     # Built-in fallback semantic + lexical scorer when GEMINI_API_KEY is not set
