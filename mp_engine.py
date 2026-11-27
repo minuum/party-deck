@@ -64,6 +64,35 @@ HW_HINTS_BANK = {
 }
 
 
+def _gemini_korean_relation_score(secret: str, word: str, api_key: str) -> Optional[float]:
+    prompt = (
+        f"너는 한국어 의미 유사도 판정기다. 두 한국어 명사 '{secret}'와(과) '{word}'의 종합 유사도를 0.0~99.0 사이의 숫자 하나로만 평가하라.\n"
+        "기준: 1) 의미적 거리(유의어/하위어 85~98), 2) 문맥적 공생(같은 상황·장소 60~84), 3) 관계적 구조(약한 연상 30~59, 무관 5~29).\n"
+        '반드시 JSON 형식으로만 답하라: {"score": 72.5}'
+    )
+    for model in ("gemini-2.5-flash", "gemini-2.0-flash"):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        body = json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.0,
+                "maxOutputTokens": 40,
+                "responseMimeType": "application/json",
+            },
+        }).encode("utf-8")
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                txt = data["candidates"][0]["content"]["parts"][0]["text"]
+                parsed = json.loads(txt)
+                sc = float(parsed.get("score"))
+                return round(max(1.0, min(99.0, sc)), 1)
+        except Exception:
+            continue
+    return None
+
+
 def _gemini_embed(text: str, api_key: str) -> Optional[List[float]]:
     for model in ("gemini-embedding-001", "text-embedding-004"):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={api_key}"
@@ -94,6 +123,12 @@ def compute_korean_similarity(secret: str, word: str) -> Tuple[float, str]:
 
     api_key = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
     if api_key:
+        # 1) Primary: Korean 3-axis semantic relationship model (Gemini Flash)
+        llm_score = _gemini_korean_relation_score(s, w, api_key)
+        if llm_score is not None:
+            return llm_score, "gemini-kr"
+
+        # 2) Secondary: Gemini Embedding cosine similarity
         v1 = _gemini_embed(s, api_key)
         v2 = _gemini_embed(w, api_key)
         if v1 and v2 and len(v1) == len(v2):
@@ -101,7 +136,6 @@ def compute_korean_similarity(secret: str, word: str) -> Tuple[float, str]:
             n1 = math.sqrt(sum(a * a for a in v1))
             n2 = math.sqrt(sum(b * b for b in v2))
             cos = dot / (n1 * n2) if n1 and n2 else 0.0
-            # Sharpen contrast for Korean single-word SEMANTIC_SIMILARITY cosines (~0.52..0.90)
             norm = max(0.0, min(1.0, (cos - 0.52) / 0.38))
             pct = 5.0 + (norm ** 1.25) * 93.5
             return round(pct, 1), "gemini"

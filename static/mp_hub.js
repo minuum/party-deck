@@ -573,7 +573,7 @@ function renderMpHiddenWord(d, me, board, ctrl, isHost) {
   const st = d.state;
   const setter = d.players[st.setter_idx];
   const isSetter = me.is_setter;
-  const engBadge = st.ai_engine === "gemini" ? "🧠 Gemini AI" : "⚙️ 내장 유사도";
+  const engBadge = st.ai_engine === "gemini-kr" ? "🧠 한국어 관계 AI" : (st.ai_engine === "gemini" ? "🧠 Gemini 임베딩" : "⚙️ 내장 유사도");
   $("mp-hud-round").textContent = `R${d.round}/${st.max_rounds}`;
   $("mp-hud-mid").textContent = `출제: ${setter ? setter.name : "-"}`;
   $("mp-hud-right").textContent = engBadge;
