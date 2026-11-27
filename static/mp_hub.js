@@ -10,7 +10,12 @@ let mpPollBusy = false;
 let mpLastSig = "";
 
 // Local UI selection state per game
-let mpSel = { h13Card: null, h13Chip: null, h13Rb: "red", rrSlot: 0, gmCard: null, gmTarget: null, pbCol: "black", pbCnt: 2, pbTarget: null };
+let mpSel = {
+  h13Card: null, h13Chip: null, h13Rb: "red",
+  rrSlot: 0, gmCard: null, gmTarget: null,
+  pbCol: "black", pbCnt: 2, pbTarget: null,
+  abBid: 3, wgR: null, wgC: null, wgWall: "N",
+};
 
 function mpStopPoll() {
   if (mpPollTimer) { clearInterval(mpPollTimer); mpPollTimer = null; }
@@ -231,6 +236,10 @@ function renderMp() {
   else if (d.game_type === "russian_roulette") renderMpRoulette(d, me, board, ctrl, isHost);
   else if (d.game_type === "gem_market") renderMpGemMarket(d, me, board, ctrl, isHost);
   else if (d.game_type === "piggy_bank") renderMpPiggyBank(d, me, board, ctrl, isHost);
+  else if (d.game_type === "auction_bingo") renderMpAuctionBingo(d, me, board, ctrl, isHost);
+  else if (d.game_type === "wall_go_2") renderMpWallGo(d, me, board, ctrl, isHost);
+  else if (d.game_type === "hidden_word") renderMpHiddenWord(d, me, board, ctrl, isHost);
+  else if (d.game_type === "formula_tower") renderMpFormulaTower(d, me, board, ctrl, isHost);
 }
 
 function mpDoneFooter(ctrl, isHost) {
@@ -494,4 +503,111 @@ if (mpUrlCode) {
     const saved = JSON.parse(localStorage.getItem("mp_active_room") || "null");
     if (saved && saved.roomId && saved.playerId) mpReconnect(saved);
   } catch (_) {}
+}
+
+// --- 7. 경매 빙고 (Auction Bingo) ---
+function renderMpAuctionBingo(d, me, board, ctrl, isHost) {
+  const curNum = d.state.current_num;
+  $("mp-hud-round").textContent = `R${d.round} / ${d.state.max_rounds}`;
+  $("mp-hud-mid").textContent = `매물 번호 [ ${curNum} ]`;
+  $("mp-hud-right").textContent = `🪙${me.chips} · ${me.lines}줄`;
+  const mset = new Set(me.marked || []);
+  board.innerHTML = `
+    <div class="bingo-grid">${(me.board || []).map((n) => `
+      <div class="bingo-cell ${mset.has(n) ? "marked" : ""} ${n === curNum && d.phase === "PLAYING" ? "target-now" : ""}">${n}</div>
+    `).join("")}</div>
+    <div class="d1-score-grid">${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name} ${p.submitted ? "✅" : ""}</span><strong>${p.lines}줄 · 🪙${p.chips}</strong></div>`).join("")}</div>`;
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+  if (me.submitted) {
+    ctrl.innerHTML = `<div class="wait-pill">⏳ 입찰 완료! 다른 플레이어의 입찰을 기다리는 중...</div>`;
+    return;
+  }
+  const maxB = me.chips;
+  if (mpSel.abBid > maxB) mpSel.abBid = maxB;
+  ctrl.innerHTML = `
+    <div class="raise-slider-row">
+      <input type="range" class="raise-range" min="0" max="${maxB}" value="${mpSel.abBid}" oninput="mpSel.abBid=parseInt(this.value,10);$('ab-bid-btn').textContent='🔨 '+this.value+'칩 입찰'" />
+      <button id="ab-bid-btn" type="button" class="btn btn-gold" style="padding:8px 14px;font-size:13px;" onclick="mpSend({bid:mpSel.abBid})">🔨 ${mpSel.abBid}칩 입찰</button>
+    </div>`;
+}
+
+// --- 8. 벽바둑 2 (Wall Go 2) ---
+function renderMpWallGo(d, me, board, ctrl, isHost) {
+  $("mp-hud-round").textContent = `턴 ${Math.min(d.round, d.state.max_rounds)}/${d.state.max_rounds}`;
+  $("mp-hud-mid").textContent = `내 영토 ${me.territory}칸`;
+  $("mp-hud-right").textContent = me.is_turn ? "⚡ 내 차례" : "대기 중";
+  const walls = new Set(d.state.walls || []);
+  const hasW = (r, c, dir) => {
+    const opp = { N: [-1, 0, "S"], S: [1, 0, "N"], E: [0, 1, "W"], W: [0, -1, "E"] }[dir];
+    return walls.has(`${r},${c},${dir}`) || walls.has(`${r + opp[0]},${c + opp[1]},${opp[2]}`);
+  };
+  const colors = ["🔵", "🔴", "🟢", "🟡"];
+  let cellsHtml = "";
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const pIdx = d.players.findIndex((p) => p.pos[0] === r && p.pos[1] === c);
+      const isSel = mpSel.wgR === r && mpSel.wgC === c;
+      const wCls = `${hasW(r, c, "N") ? "wN" : ""} ${hasW(r, c, "S") ? "wS" : ""} ${hasW(r, c, "E") ? "wE" : ""} ${hasW(r, c, "W") ? "wW" : ""}`;
+      cellsHtml += `<div class="wg-cell ${wCls} ${isSel ? "sel" : ""}" onclick="mpSel.wgR=${r};mpSel.wgC=${c};renderMp()">${pIdx >= 0 ? colors[pIdx % 4] : ""}</div>`;
+    }
+  }
+  board.innerHTML = `
+    <div class="wg-grid">${cellsHtml}</div>
+    <div class="d1-score-grid">${d.players.map((p, i) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${colors[i % 4]} ${p.name}${p.is_turn ? " ⚡" : ""}</span><strong>영토 ${p.territory}칸</strong></div>`).join("")}</div>`;
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+  if (!me.is_turn) {
+    ctrl.innerHTML = `<div class="wait-pill">⏳ 다른 플레이어가 이동 및 벽을 설치하는 중...</div>`;
+    return;
+  }
+  const tr = mpSel.wgR !== null ? mpSel.wgR : me.pos[0];
+  const tc = mpSel.wgC !== null ? mpSel.wgC : me.pos[1];
+  ctrl.innerHTML = `
+    <div class="h13-row">
+      ${[["N", "⬆️ 위벽"], ["S", "⬇️ 아래벽"], ["W", "⬅️ 왼벽"], ["E", "➡️ 오른벽"]].map(([k, l]) => `<button class="h13-chip ${mpSel.wgWall === k ? "selected" : ""}" onclick="mpSel.wgWall='${k}';renderMp()">${l}</button>`).join("")}
+    </div>
+    <button class="btn btn-gold" style="padding:10px;" onclick="mpSend({r:${tr},c:${tc},wall_dir:mpSel.wgWall});mpSel.wgR=null;mpSel.wgC=null;">🧱 (${tr + 1},${tc + 1}) 이동 &amp; 벽 설치</button>`;
+}
+
+// --- 9. 히든 워드 (Hidden Word) ---
+function renderMpHiddenWord(d, me, board, ctrl, isHost) {
+  $("mp-hud-round").textContent = `시도 ${me.tries}회`;
+  $("mp-hud-mid").textContent = `힌트: ${d.state.hint}`;
+  $("mp-hud-right").textContent = "5글자 영단어";
+  const rows = (me.guesses || []).map((g) => `
+    <div class="hw-row">${g.text.split("").map((ch, i) => `<div class="hw-cell ${g.colors[i]}">${ch}</div>`).join("")}</div>
+  `).join("");
+  board.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:5px;">${rows || `<div class="wait-pill">아직 추리 기록이 없습니다. 아래에서 5글자 영단어를 입력하세요!</div>`}</div>
+    <div class="d1-score-grid" style="margin-top:6px;">${d.players.map((p) => `<div class="d1-pcell ${p.id === d.viewer_id ? "me" : ""}"><span>${p.name}</span><strong>${p.solved ? "🏆 정답!" : `${p.tries}회 시도`}</strong></div>`).join("")}</div>`;
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+  ctrl.innerHTML = `
+    <div style="display:flex;gap:8px;">
+      <input id="mp-hw-in" class="text-input code-input" maxlength="5" placeholder="예: BRAIN" />
+      <button class="btn btn-gold" style="padding:0 16px;white-space:nowrap;" onclick="mpSend({guess:$('mp-hw-in').value})">제출</button>
+    </div>`;
+}
+
+// --- 10. 수식의 탑 (Formula Tower) ---
+function renderMpFormulaTower(d, me, board, ctrl, isHost) {
+  $("mp-hud-round").textContent = `R${d.round}`;
+  $("mp-hud-mid").textContent = `목표 [ ${d.state.target} ]`;
+  $("mp-hud-right").textContent = `내 탑 ${me.tower}/5층`;
+  board.innerHTML = `
+    <div style="text-align:center;font-size:13px;font-weight:900;color:var(--gold-bright);">사용 숫자 카드: ${(d.state.nums || []).map((n) => `[${n}]`).join(" ")}</div>
+    <div class="ft-towers">${d.players.map((p) => `
+      <div class="ft-col ${p.id === d.viewer_id ? "me" : ""}">
+        <div class="ft-stack">${Array.from({ length: p.tower }, () => `<div class="ft-block"></div>`).join("")}</div>
+        <strong>${p.name} ${p.submitted ? "✅" : ""}</strong>
+        <span style="color:#aaa;font-size:10px;">${p.tower}층 · ${p.last_expr}</span>
+      </div>`).join("")}</div>`;
+  if (d.phase === "DONE") return mpDoneFooter(ctrl, isHost);
+  if (me.submitted) {
+    ctrl.innerHTML = `<div class="wait-pill">⏳ 수식 제출 완료! 다른 플레이어 대기 중...</div>`;
+    return;
+  }
+  ctrl.innerHTML = `
+    <div style="display:flex;gap:8px;">
+      <input id="mp-ft-in" class="text-input" placeholder="예: 9*4-5+2" />
+      <button class="btn btn-gold" style="padding:0 16px;white-space:nowrap;" onclick="mpSend({expr:$('mp-ft-in').value})">🗼 제출</button>
+    </div>`;
 }

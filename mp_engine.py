@@ -11,7 +11,26 @@ GAME_META = {
     "russian_roulette": {"title": "러시안 룰렛", "day": "2일차 감옥매치", "max_players": 6, "min_players": 2},
     "gem_market": {"title": "보석 암시장", "day": "3일차 메인매치", "max_players": 6, "min_players": 2},
     "piggy_bank": {"title": "돼지 저금통", "day": "3일차 감옥매치", "max_players": 5, "min_players": 2},
+    "auction_bingo": {"title": "경매 빙고", "day": "4일차 메인매치", "max_players": 5, "min_players": 2},
+    "wall_go_2": {"title": "벽바둑 2", "day": "4일차 감옥매치", "max_players": 4, "min_players": 2},
+    "hidden_word": {"title": "히든 워드", "day": "5일차 메인매치", "max_players": 6, "min_players": 2},
+    "formula_tower": {"title": "수식의 탑", "day": "5일차 감옥매치", "max_players": 5, "min_players": 2},
 }
+
+HW_WORDS = [
+    {"word": "DEVIL", "hint": "악마 · 이 프로그램의 상징"},
+    {"word": "BRAIN", "hint": "두뇌 · 서바이벌의 무기"},
+    {"word": "ROYAL", "hint": "왕실 · 최고의 패"},
+    {"word": "LOGIC", "hint": "논리 · 추론의 핵심"},
+    {"word": "CHESS", "hint": "체스 · 고전 전략 보드게임"},
+    {"word": "BLUFF", "hint": "블러핑 · 거짓 베팅 심리전"},
+    {"word": "PRIZE", "hint": "상금 · 최종 우승 보상"},
+    {"word": "PIECE", "hint": "피스 · 생존과 승리의 화폐"},
+    {"word": "TRICK", "hint": "트릭 · 상대를 속이는 수"},
+    {"word": "CROWN", "hint": "왕관 · 최후 1인의 영예"},
+    {"word": "MATCH", "hint": "매치 · 메인과 감옥의 대결"},
+    {"word": "POWER", "hint": "힘 · 판을 지배하는 능력"},
+]
 
 GM_CARDS = [
     {"id": "dia", "label": "💎 다이아", "pts": 5, "isBomb": False},
@@ -172,6 +191,62 @@ def start_mp_game(room: dict):
         room["log"] = "모든 저금통은 ⚫1, ⚪1개로 시작합니다. 먼저 5점 달성 시 우승!"
         _pb_advance_ai(room)
 
+    elif gt == "auction_bingo":
+        pool = list(range(1, 26))
+        random.shuffle(pool)
+        for p in ps:
+            board = list(range(1, 26))
+            random.shuffle(board)
+            p["board"] = board
+            p["marked"] = []
+            p["chips"] = 40
+            p["lines"] = 0
+            p["pending"] = None
+        room["state"] = {"max_rounds": 15, "pool": pool[1:], "current_num": pool[0]}
+        room["banner"] = f"🔨 경매 1라운드! 매물 번호 [ {pool[0]} ] — 칩을 비공개 입찰하세요!"
+        room["log"] = "최고 입찰자가 번호를 낙찰받아 빙고판에 체크! 먼저 3줄 빙고 시 우승!"
+
+    elif gt == "wall_go_2":
+        # 5x5 grid: each player gets 1 piece at corners
+        starts = [(0, 0), (4, 4), (0, 4), (4, 0)]
+        for i, p in enumerate(ps):
+            r, c = starts[i % 4]
+            p["pos"] = [r, c]
+            p["territory"] = 1
+        room["state"] = {
+            "turn_idx": 0,
+            "max_rounds": 20,
+            "walls": [],  # list of "r,c,dir" where dir in ("N","S","E","W")
+        }
+        room["banner"] = f"🧱 벽바둑 2 시작! {ps[0]['name']}님 차례 — 인접 칸으로 이동 후 벽을 세우세요!"
+        room["log"] = "벽으로 영토를 넓히고 상대를 가두세요! 20턴 종료 시 최대 영토 우승!"
+        _wg_advance_ai(room)
+
+    elif gt == "hidden_word":
+        pick = random.choice(HW_WORDS)
+        for p in ps:
+            p["guesses"] = []
+            p["solved"] = False
+        room["state"] = {
+            "secret": pick["word"],
+            "hint": pick["hint"],
+            "max_rounds": 6,
+            "winner_name": None,
+        }
+        room["banner"] = f"🔤 히든 워드 시작! 힌트: [{pick['hint']}] (5글자 영단어)"
+        room["log"] = "초록(자리+글자 일치) / 노랑(포함) 힌트로 먼저 정답을 맞히세요!"
+
+    elif gt == "formula_tower":
+        for p in ps:
+            p["tower"] = 0
+            p["pending"] = None
+            p["last_expr"] = "-"
+        nums = sorted(random.sample(range(1, 10), 4))
+        target = random.randint(12, 48)
+        room["state"] = {"target": target, "nums": nums, "goal_floors": 5}
+        room["banner"] = f"🗼 목표 숫자 [ {target} ]! 주어진 4개 숫자({nums})와 + - × 로 가장 가깝게 만드세요!"
+        room["log"] = "매 라운드 목표에 가장 가까운 플레이어가 탑 +1층! 먼저 5층 달성 시 우승!"
+
 
 # ---------------------------------------------------------------------------
 # Action Handlers per Game
@@ -221,6 +296,14 @@ def handle_mp_action(room: dict, pid: str, payload: dict) -> Optional[str]:
         return _act_gem_market(room, me, payload)
     if gt == "piggy_bank":
         return _act_piggy_bank(room, me, payload)
+    if gt == "auction_bingo":
+        return _act_auction_bingo(room, me, payload)
+    if gt == "wall_go_2":
+        return _act_wall_go(room, me, payload)
+    if gt == "hidden_word":
+        return _act_hidden_word(room, me, payload)
+    if gt == "formula_tower":
+        return _act_formula_tower(room, me, payload)
     return None
 
 
@@ -673,6 +756,242 @@ def _act_piggy_bank(room: dict, me: dict, payload: dict):
     return "현재 수행할 수 없는 행동입니다."
 
 
+# --- 7. 경매 빙고 (Auction Bingo) ---
+def _count_bingo_lines(board: List[int], marked: List[int]) -> int:
+    mset = set(marked)
+    lines = 0
+    for r in range(5):
+        if all(board[r * 5 + c] in mset for c in range(5)):
+            lines += 1
+    for c in range(5):
+        if all(board[r * 5 + c] in mset for r in range(5)):
+            lines += 1
+    if all(board[i * 5 + i] in mset for i in range(5)):
+        lines += 1
+    if all(board[i * 5 + (4 - i)] in mset for i in range(5)):
+        lines += 1
+    return lines
+
+
+def _act_auction_bingo(room: dict, me: dict, payload: dict):
+    bid = max(0, min(me["chips"], int(payload.get("bid", 0))))
+    me["pending"] = bid
+    for p in room["players"]:
+        if p["is_ai"] and p["pending"] is None:
+            p["pending"] = min(p["chips"], random.randint(0, min(8, p["chips"])))
+
+    if all(p["pending"] is not None for p in room["players"]):
+        st = room["state"]
+        num = st["current_num"]
+        max_bid = max(p["pending"] for p in room["players"])
+        top_bidders = [p for p in room["players"] if p["pending"] == max_bid]
+        winner = random.choice(top_bidders)
+        winner["chips"] -= max_bid
+        if num not in winner["marked"]:
+            winner["marked"].append(num)
+        winner["lines"] = _count_bingo_lines(winner["board"], winner["marked"])
+        bid_log = ", ".join(f"{p['name']}({p['pending']}칩)" for p in room["players"])
+        for p in room["players"]:
+            p["pending"] = None
+
+        if winner["lines"] >= 3 or room["round"] >= st["max_rounds"] or not st["pool"]:
+            room["phase"] = "DONE"
+            champ = max(room["players"], key=lambda x: (x["lines"], len(x["marked"]), x["chips"]))
+            room["banner"] = f"🏆 경매 빙고 우승: {champ['name']} ({champ['lines']}줄 빙고, {len(champ['marked'])}칸!)"
+            room["log"] = f"마지막 낙찰: {winner['name']} ({num}번, {max_bid}칩)"
+        else:
+            room["round"] += 1
+            st["current_num"] = st["pool"].pop(0)
+            room["banner"] = f"🔨 {winner['name']}님이 [{num}] 낙찰 ({max_bid}칩)! 다음 매물: [ {st['current_num']} ]"
+            room["log"] = f"입찰 내역: {bid_log}"
+    else:
+        w = sum(1 for p in room["players"] if p["pending"] is None)
+        room["log"] = f"⏳ 다른 플레이어 {w}명 입찰 대기 중..."
+    return None
+
+
+# --- 8. 벽바둑 2 (Wall Go 2) ---
+def _wg_has_wall(walls: List[str], r: int, c: int, d: str) -> bool:
+    opp = {"N": (-1, 0, "S"), "S": (1, 0, "N"), "E": (0, 1, "W"), "W": (0, -1, "E")}
+    dr, dc, od = opp[d]
+    return f"{r},{c},{d}" in walls or f"{r+dr},{c+dc},{od}" in walls
+
+
+def _wg_calc_territories(room: dict):
+    walls = room["state"]["walls"]
+    ps = room["players"]
+    for p in ps:
+        sr, sc = p["pos"]
+        seen = {(sr, sc)}
+        q = [(sr, sc)]
+        while q:
+            r, c = q.pop(0)
+            for d, (dr, dc) in [("N", (-1, 0)), ("S", (1, 0)), ("E", (0, 1)), ("W", (0, -1))]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < 5 and 0 <= nc < 5 and (nr, nc) not in seen and not _wg_has_wall(walls, r, c, d):
+                    seen.add((nr, nc))
+                    q.append((nr, nc))
+        p["territory"] = len(seen)
+
+
+def _wg_advance_ai(room: dict):
+    st = room["state"]
+    ps = room["players"]
+    guard = 0
+    while room["phase"] == "PLAYING" and guard < 8:
+        guard += 1
+        curr = ps[st["turn_idx"]]
+        if not curr["is_ai"]:
+            return
+        r, c = curr["pos"]
+        dirs = [("N", (-1, 0)), ("S", (1, 0)), ("E", (0, 1)), ("W", (0, -1))]
+        valid_moves = []
+        occupied = {tuple(p["pos"]) for p in ps if p["id"] != curr["id"]}
+        for d, (dr, dc) in dirs:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < 5 and 0 <= nc < 5 and (nr, nc) not in occupied and not _wg_has_wall(st["walls"], r, c, d):
+                valid_moves.append((nr, nc))
+        if valid_moves:
+            nr, nc = random.choice(valid_moves)
+            curr["pos"] = [nr, nc]
+        # Place random wall around new pos
+        r2, c2 = curr["pos"]
+        w_opts = [d for d, (dr, dc) in dirs if 0 <= r2 + dr < 5 and 0 <= c2 + dc < 5 and not _wg_has_wall(st["walls"], r2, c2, d)]
+        if w_opts:
+            wd = random.choice(w_opts)
+            st["walls"].append(f"{r2},{c2},{wd}")
+        _wg_calc_territories(room)
+        room["round"] += 1
+        if room["round"] > st["max_rounds"]:
+            room["phase"] = "DONE"
+            champ = max(ps, key=lambda x: x["territory"])
+            room["banner"] = f"🏆 벽바둑 2 우승: {champ['name']} (영토 {champ['territory']}칸!)"
+            return
+        st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
+        room["banner"] = f"🧱 {ps[st['turn_idx']]['name']}님 차례! 이동할 칸과 벽 방향을 선택하세요."
+
+
+def _act_wall_go(room: dict, me: dict, payload: dict):
+    st = room["state"]
+    ps = room["players"]
+    if ps[st["turn_idx"]]["id"] != me["id"]:
+        return "내 차례가 아닙니다."
+    nr = int(payload.get("r", me["pos"][0]))
+    nc = int(payload.get("c", me["pos"][1]))
+    wd = payload.get("wall_dir", "N")
+    r, c = me["pos"]
+    dist = abs(nr - r) + abs(nc - c)
+    if dist > 1 or not (0 <= nr < 5 and 0 <= nc < 5):
+        return "인접한 1칸(또는 제자리)으로만 이동할 수 있습니다."
+    if dist == 1:
+        move_d = "N" if nr < r else ("S" if nr > r else ("W" if nc < c else "E"))
+        if _wg_has_wall(st["walls"], r, c, move_d):
+            return "벽이 막고 있어 이동할 수 없습니다!"
+        if any(p["pos"] == [nr, nc] and p["id"] != me["id"] for p in ps):
+            return "다른 플레이어가 있는 칸입니다!"
+        me["pos"] = [nr, nc]
+    if wd in ("N", "S", "E", "W") and not _wg_has_wall(st["walls"], nr, nc, wd):
+        st["walls"].append(f"{nr},{nc},{wd}")
+    _wg_calc_territories(room)
+    room["round"] += 1
+    if room["round"] > st["max_rounds"]:
+        room["phase"] = "DONE"
+        champ = max(ps, key=lambda x: x["territory"])
+        room["banner"] = f"🏆 벽바둑 2 우승: {champ['name']} (영토 {champ['territory']}칸!)"
+        return None
+    st["turn_idx"] = (st["turn_idx"] + 1) % len(ps)
+    room["banner"] = f"🧱 {me['name']} 이동 & 벽 설치! 다음: {ps[st['turn_idx']]['name']}"
+    _wg_advance_ai(room)
+    return None
+
+
+# --- 9. 히든 워드 (Hidden Word) ---
+def _hw_eval(guess: str, secret: str) -> List[str]:
+    res = ["r"] * 5
+    rem: Dict[str, int] = {}
+    for i in range(5):
+        if guess[i] == secret[i]:
+            res[i] = "g"
+        else:
+            rem[secret[i]] = rem.get(secret[i], 0) + 1
+    for i in range(5):
+        if res[i] == "g":
+            continue
+        if rem.get(guess[i], 0) > 0:
+            res[i] = "y"
+            rem[guess[i]] -= 1
+    return res
+
+
+def _act_hidden_word(room: dict, me: dict, payload: dict):
+    guess = (payload.get("guess") or "").strip().upper()
+    if len(guess) != 5 or not guess.isalpha():
+        return "영문 5글자 단어를 입력하세요."
+    st = room["state"]
+    cols = _hw_eval(guess, st["secret"])
+    me["guesses"].append({"text": guess, "colors": cols})
+    if cols.count("g") == 5:
+        me["solved"] = True
+        room["phase"] = "DONE"
+        st["winner_name"] = me["name"]
+        room["banner"] = f"🏆 히든 워드 정답! {me['name']}님 우승! (정답: {st['secret']})"
+    else:
+        g = cols.count("g")
+        y = cols.count("y")
+        room["banner"] = f"🔤 {me['name']} 추리: 🟩{g} 🟨{y} · 힌트: [{st['hint']}]"
+    return None
+
+
+# --- 10. 수식의 탑 (Formula Tower) ---
+def _act_formula_tower(room: dict, me: dict, payload: dict):
+    expr = (payload.get("expr") or "").strip().replace("×", "*").replace("÷", "/")
+    st = room["state"]
+    if not expr or any(ch not in "0123456789+-*/() " for ch in expr):
+        return "숫자와 연산자(+ - × ÷)만 사용하세요."
+    try:
+        val = eval(expr, {"__builtins__": {}}, {})
+        val = round(float(val), 2)
+    except Exception:
+        return "올바른 수식이 아닙니다."
+    me["pending"] = {"expr": payload.get("expr", expr), "val": val, "diff": abs(val - st["target"])}
+
+    for p in room["players"]:
+        if p["is_ai"] and p["pending"] is None:
+            a, b, c, d = st["nums"]
+            cands = [
+                (f"{d}×{c}+{b}-{a}", d * c + b - a),
+                (f"{d}×{b}+{c}+{a}", d * b + c + a),
+                (f"{c}×{b}+{d}-{a}", c * b + d - a),
+                (f"({d}+{c})×{a}+{b}", (d + c) * a + b),
+            ]
+            best_e, best_v = min(cands, key=lambda x: abs(x[1] - st["target"]))
+            p["pending"] = {"expr": best_e, "val": best_v, "diff": abs(best_v - st["target"])}
+
+    if all(p["pending"] is not None for p in room["players"]):
+        best_diff = min(p["pending"]["diff"] for p in room["players"])
+        winners = [p for p in room["players"] if p["pending"]["diff"] == best_diff]
+        for p in room["players"]:
+            p["last_expr"] = f"{p['pending']['expr']}={p['pending']['val']}"
+            if p in winners:
+                p["tower"] += 1
+            p["pending"] = None
+        w_names = ", ".join(w["name"] for w in winners)
+        champ = next((p for p in room["players"] if p["tower"] >= st["goal_floors"]), None)
+        if champ:
+            room["phase"] = "DONE"
+            room["banner"] = f"🏆 5층 탑 완성! {champ['name']} 최종 우승!"
+        else:
+            room["round"] += 1
+            st["nums"] = sorted(random.sample(range(1, 10), 4))
+            st["target"] = random.randint(12, 48)
+            room["banner"] = f"🗼 {w_names} +1층 적재! 다음 목표: [ {st['target']} ]"
+            room["log"] = f"새 숫자 카드: {st['nums']}"
+    else:
+        w = sum(1 for p in room["players"] if p["pending"] is None)
+        room["log"] = f"⏳ 다른 플레이어 {w}명 수식 제출 대기 중..."
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Privacy-Safe Serializer per Viewer
 # ---------------------------------------------------------------------------
@@ -725,9 +1044,38 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
             })
         elif gt == "piggy_bank":
             po.update({"score": p.get("score", 0)})
+        elif gt == "auction_bingo":
+            po.update({
+                "chips": p.get("chips", 0),
+                "lines": p.get("lines", 0),
+                "marked_count": len(p.get("marked", [])),
+                "submitted": p.get("pending") is not None,
+                "board": p.get("board", []) if is_me else [],
+                "marked": p.get("marked", []) if is_me else [],
+            })
+        elif gt == "wall_go_2":
+            po.update({
+                "pos": p.get("pos", [0, 0]),
+                "territory": p.get("territory", 1),
+                "is_turn": idx == st.get("turn_idx", 0) and room["phase"] == "PLAYING",
+            })
+        elif gt == "hidden_word":
+            po.update({
+                "tries": len(p.get("guesses", [])),
+                "guesses": p.get("guesses", []) if (is_me or done) else [],
+                "solved": p.get("solved", False),
+            })
+        elif gt == "formula_tower":
+            po.update({
+                "tower": p.get("tower", 0),
+                "last_expr": p.get("last_expr", "-"),
+                "submitted": p.get("pending") is not None,
+            })
         players_out.append(po)
 
     state_out = dict(st)
+    if gt == "hidden_word" and not done:
+        state_out["secret"] = None
     if gt == "russian_roulette" and "chambers" in st:
         state_out["chambers"] = [
             {

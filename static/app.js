@@ -1084,14 +1084,14 @@ const GAME_CATALOG = [
   { id: "choice", name: "양자택일", cat: "main", catLabel: "메인매치", day: "1일차", progress: 100, playable: true, desc: "1일차 메인매치 · 6라운드 공공의 이익 vs 개인의 이익 과반수 심리전 (7인전)" },
   { id: "mystery_exchange", name: "미스터리 거래소", cat: "main", catLabel: "메인매치", day: "2일차", progress: 100, playable: true, desc: "2일차 메인매치 · 7개 종목의 숨겨진 가격 패턴을 파악해 자산을 불리는 10라운드 주식 거래" },
   { id: "gem_market", name: "보석 암시장", cat: "main", catLabel: "메인매치", day: "3일차", progress: 100, playable: true, desc: "3일차 메인매치 · 보석/폭탄 교환 + 비공개 마니또 곱셈 점수로 승부하는 5라운드 심리전" },
-  { id: "auction_bingo", name: "경매 빙고", cat: "main", catLabel: "메인매치", day: "4일차", progress: 0, playable: false, desc: "4일차 메인매치 · 경매로 숫자를 낙찰받아 빙고를 완성하는 전략전" },
-  { id: "hidden_word", name: "히든 워드", cat: "main", catLabel: "메인매치", day: "5일차", progress: 0, playable: false, desc: "5일차 메인매치 · 숨겨진 단어를 추리하는 언어 추론 게임" },
+  { id: "auction_bingo", name: "경매 빙고", cat: "main", catLabel: "메인매치", day: "4일차", progress: 100, playable: true, desc: "4일차 메인매치 · 칩 비공개 입찰로 5×5 빙고 숫자를 낙찰받아 3줄을 먼저 완성하는 경매 전략전" },
+  { id: "hidden_word", name: "히든 워드", cat: "main", catLabel: "메인매치", day: "5일차", progress: 100, playable: true, desc: "5일차 메인매치 · 힌트와 초록/노랑 글자 판정으로 5글자 비밀 영단어를 먼저 맞히는 추론전" },
 
   { id: "heavy_13", name: "무거운 13", cat: "prison", catLabel: "감옥매치", day: "1일차", progress: 100, playable: true, desc: "1일차 감옥매치 · 바위 카드(0~6)와 3색+레인보우 칩으로 임계점 13을 피하는 14라운드 전략전" },
   { id: "russian_roulette", name: "러시안 룰렛", cat: "prison", catLabel: "감옥매치", day: "2일차", progress: 100, playable: true, desc: "2일차 감옥매치 · 16약실·2실탄! 크레딧으로 조사·총구 회전·약실 조작 후 격발 생존전" },
   { id: "piggy_bank", name: "돼지 저금통", cat: "prison", catLabel: "감옥매치", day: "3일차", progress: 100, playable: true, desc: "3일차 감옥매치 · 5개 저금통 속 흑/백 동전 개수를 암기하고 의심으로 5점을 선취하는 심리전" },
-  { id: "wall_go_2", name: "벽바둑 2", cat: "prison", catLabel: "감옥매치", day: "4일차", progress: 0, playable: false, desc: "4일차 감옥매치 · 벽을 세워 영토를 차지하는 보드 전략전" },
-  { id: "formula_tower", name: "수식의 탑", cat: "prison", catLabel: "감옥매치", day: "5일차", progress: 0, playable: false, desc: "5일차 감옥매치 · 연산 카드 조합으로 탑을 쌓는 수리 대결" },
+  { id: "wall_go_2", name: "벽바둑 2", cat: "prison", catLabel: "감옥매치", day: "4일차", progress: 100, playable: true, desc: "4일차 감옥매치 · 5×5 보드에서 말을 이동하고 벽을 세워 최대 영토를 차지하는 보드 전략전" },
+  { id: "formula_tower", name: "수식의 탑", cat: "prison", catLabel: "감옥매치", day: "5일차", progress: 100, playable: true, desc: "5일차 감옥매치 · 4개 숫자 카드로 목표값에 가장 가까운 수식을 만들어 5층 탑을 쌓는 수리 대결" },
   { id: "gradation", name: "그라데이션", cat: "prison", catLabel: "감옥매치", day: "6일차", progress: 0, playable: false, desc: "6일차 감옥매치 · 순서와 색/수치 배열 추리전" },
 
   { id: "card_janggi", name: "카드 장기", cat: "final", catLabel: "결승전", day: "1회전", progress: 0, playable: false, desc: "결승 1회전 · 카드 기반 1:1 장기 변형 전략전" },
@@ -1142,6 +1142,22 @@ const GAME_VISUALS = {
   piggy_bank: {
     accent: "#f06595",
     svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f783ac" stroke-width="1.8"><rect x="4" y="7" width="16" height="11" rx="5"/><circle cx="9.5" cy="12" r="1.5" fill="#fff" stroke="none"/><circle cx="14.5" cy="12" r="1.5" fill="#333" stroke="#fff"/><path d="M10 4h4" stroke-width="2"/></svg>`,
+  },
+  auction_bingo: {
+    accent: "#3bc9db",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#3bc9db" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/><circle cx="6" cy="6" r="1.6" fill="#f7df8c" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="#f7df8c" stroke="none"/><circle cx="18" cy="18" r="1.6" fill="#f7df8c" stroke="none"/></svg>`,
+  },
+  wall_go_2: {
+    accent: "#748ffc",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#748ffc" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v10M3 13h10" stroke="#ff6b6b" stroke-width="2.6"/><circle cx="7.5" cy="8" r="2.2" fill="#748ffc"/><circle cx="16.5" cy="17" r="2.2" fill="#5ee695"/></svg>`,
+  },
+  hidden_word: {
+    accent: "#b197fc",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#b197fc" stroke-width="1.8"><rect x="3" y="7" width="5" height="10" rx="1.5" fill="rgba(46,204,113,0.3)" stroke="#5ee695"/><rect x="9.5" y="7" width="5" height="10" rx="1.5" fill="rgba(241,196,15,0.3)" stroke="#f7df8c"/><rect x="16" y="7" width="5" height="10" rx="1.5"/><text x="12" y="14.5" text-anchor="middle" font-size="7" font-weight="900" fill="#fff" stroke="none">W</text></svg>`,
+  },
+  formula_tower: {
+    accent: "#fab005",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#fab005" stroke-width="1.8"><rect x="4" y="16" width="16" height="4" rx="1"/><rect x="6" y="11" width="12" height="4" rx="1"/><rect x="8" y="6" width="8" height="4" rx="1"/><path d="M12 2v4" stroke="#5ee695" stroke-width="2"/></svg>`,
   },
 };
 
