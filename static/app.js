@@ -843,6 +843,7 @@ async function checkLiveStatus() {
       el.className = "st-badge " + cls;
     };
     setBadge("st-server", h.ok ? "정상" : "오류", h.ok ? "ok" : "err");
+    setBadge("st-gemini", h.gemini_ai ? "활성 (AI)" : "내장 폴백", h.gemini_ai ? "ok" : "warn");
 
     if (!h.redis) {
       setBadge("st-redis", "로컬 메모리", "warn");
