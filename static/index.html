@@ -13,288 +13,10 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="apple-touch-icon" href="/static/favicon.svg" />
   <title>Party Deck — THE DEVIL'S PLAN</title>
-  <link rel="stylesheet" href="/static/style.css?v=4.5" />
+  <link rel="stylesheet" href="/static/style.css?v=5.0" />
 </head>
 
 <body>
-  <!-- LEFT PATCH NOTES & LIVE STATUS PANEL -->
-  <button id="btn-patch-toggle" class="patch-fab" type="button">📋 패치노트</button>
-  <aside id="patch-panel" class="patch-panel">
-    <div class="patch-head">
-      <div>
-        <div class="patch-eyebrow">PARTY-DECK · LIVE</div>
-        <div class="patch-title">패치노트 &amp; 상태</div>
-      </div>
-      <button id="btn-patch-close" class="patch-close" type="button">✕</button>
-    </div>
-
-    <div class="patch-section">
-      <div class="patch-sec-title">실시간 기능 상태</div>
-      <ul class="status-list" id="live-status-list">
-        <li><span>웹 서버</span><span class="st-badge ok" id="st-server">확인 중</span></li>
-        <li><span>Redis 저장소 (쓰기)</span><span class="st-badge warn" id="st-redis">확인 중</span></li>
-        <li><span>⚡ Firebase 실시간</span><span class="st-badge warn" id="st-firebase">확인 중</span></li>
-        <li><span>🧠 Gemini AI 유사도</span><span class="st-badge warn" id="st-gemini">확인 중</span></li>
-        <li><span>🤖 1인 AI 대전</span><span class="st-badge ok" id="st-solo">정상</span></li>
-        <li><span>👑 멀티플레이 방/초대</span><span class="st-badge ok" id="st-multi">정상</span></li>
-        <li><span>📜 규칙 &amp; 시뮬레이션</span><span class="st-badge ok">정상</span></li>
-      </ul>
-      <div id="st-redis-hint" class="status-hint hidden"></div>
-    </div>
-
-    <div class="patch-section">
-      <div class="patch-sec-title">최근 패치 내역</div>
-      <div class="patch-notes">
-        <div class="patch-item latest">
-          <div class="patch-ver">v4.5 <span>방금 전</span></div>
-          <ul>
-            <li><strong>⚡ Firebase Realtime DB 신호등 하이브리드 연동!</strong></li>
-            <li>상대방 액션·AI 진행 시 <strong>0.05초 즉시 실시간 동기화(SSE)</strong> + 대기 중 폴링 <strong>90% 추가 절감</strong> (연결 끊김 시 스마트 폴링 자동 폴백)</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v4.4</div>
-          <ul>
-            <li><strong>상황별 스마트 폴링(Turn-Aware Polling) 업그레이드!</strong></li>
-            <li>내 차례·고민 중엔 <strong>3.5~3.8초</strong> 초절전 · 상대 차례 대기 시엔 <strong>1.4초</strong> 빠른 반응 · AI 차례 <strong>0.6초</strong> · 1인전 내 차례 <strong>0 req/s</strong></li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v4.3</div>
-          <ul>
-            <li><strong>서버·Redis 리소스 70~90% 초절전 최적화!</strong></li>
-            <li><strong>적응형 폴링</strong>(AI 차례 0.6초 · 멀티 대기 1.8초 · 대기실 2.2초) + <strong>백그라운드 탭/화면 꺼짐 시 폴링 자동 중지</strong>
-              + <strong>1인 AI 대전 내 차례 0 req/s 무폴링</strong> 적용!</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v4.2</div>
-          <ul>
-            <li><strong>〈히든 워드〉 한국어 임베딩 캘리브레이션 &amp; 90% 조기종료 최적화!</strong> — 20개 히든 워드 실측 분포 기반으로
-              무관어(15~25%)·핵심연상(70~86%)·스포일러(90%↑) 변별력 강화</li>
-            <li><strong>〈히든 워드〉 사람 출제 시 AI 추리자 자동 진행 버그 수정</strong> — 힌트 종료 후 AI들이 0.55~0.95초 간격으로 차례로 추리 &amp; 자동 라운드
-              정산!</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v4.1</div>
-          <ul>
-            <li><strong>〈러시안 룰렛〉 우측 실시간 격발 순서표(#1~#16) 추가!</strong> — 총구 회전 시 누가 몇 번 약실을 맞는지·내 담당 약실·실탄 경고를 실시간으로 표시
-              &amp; 표 클릭 선택 지원</li>
-            <li><strong>전체 게임 AI 자연스러운 턴 페이싱 적용</strong> — 모든 AI가 즉시 넘어가지 않고 <strong>0.55~0.95초</strong> 간격으로 한 명씩 차례대로
-              행동!</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v4.0</div>
-          <ul>
-            <li><strong>갤러리 카드 그리드(Gallery Card Grid) UI 전면 업그레이드</strong>: 모바일 2열 · 태블릿 3열 · 데스크톱 4열 반응형 쇼케이스 카드 레이아웃
-              적용</li>
-            <li><strong>CSS Subgrid &amp; Container Queries</strong> 적용으로 카드별 미디어 배너·제목·설명·버튼 라인 완벽 정렬 +
-              <code>?v=4.0</code> 캐시 무효화 적용
-            </li>
-            <li><strong>Impeccable 다크 럭셔리 폴리싱</strong>: 게임별 시그니처 스포트라이트 배너, <code>📖 설명</code> → <code>▶ 플레이</code> 원클릭
-              흐름 유지</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.9</div>
-          <ul>
-            <li><strong>메인 페이지 UI 개편</strong>: 전용 SVG 아이콘·요약·<code>📖 설명</code> &amp; <code>▶ 플레이</code> 규칙 시트 플로우 적용
-            </li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.8</div>
-          <ul>
-            <li><strong>스튜디오 카드 테이블 &amp; 실물 카드 디자인 업그레이드!</strong></li>
-            <li>HIT, STAY 카지노 펠트 테이블 + 코너 인덱스 실물 트럼프 카드, 카드 장기 원목 궁성판, 그라데이션 3D 세라믹 컵, 컬러 링크 네온 노드 맵 적용</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.7</div>
-          <ul>
-            <li><strong>결승 1회전 〈카드 장기〉 원작 룰 전면 수정!</strong> (5×5 보드 · 큰 말1+작은 말3 · 5종 동물 행마카드 순서 배치 · 후공 첫 4장 예외 룰)</li>
-            <li><strong>결승 2회전 〈컬러 링크〉 원작 룰 전면 수정!</strong> (6×6 보드 · 5색 쌍 배치 · <strong>🚨 불가능 선언</strong> &amp;
-              <strong>겹침 금지 + 길이 6칸↑ 경로 증명</strong>)
-            </li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.6</div>
-          <ul>
-            <li><strong>〈그라데이션〉 원작 룰 전면 수정!</strong> (<code>⬛검정-▪️진회색-▫️상아색-⬜흰색-▫️상아색-▪️진회색-⬛검정</code> 대칭 7통 ·
-              오름차순·총합≤30 배치 · 통 색상만 공개되는 1:1 블러핑 심리전)</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.5</div>
-          <ul>
-            <li><strong>AI 4단계 개별 난이도 설정</strong> 추가 (<code>🌱쉬움</code> · <code>⚖️보통</code> · <code>🔥고수</code> ·
-              <code>😈악마</code> — 대기실에서 AI마다 개별 클릭 변경 가능!)
-            </li>
-            <li><strong>4개 게임 추가 멀티플레이 구현</strong>: <code>그라데이션</code> · <code>카드 장기</code> · <code>컬러 링크</code> ·
-              <code>비밀 코드</code> (<strong>16 / 23 · 70%</strong> 달성!)
-            </li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.4</div>
-          <ul>
-            <li><strong>〈미스터리 거래소〉 PRO 업그레이드</strong>: <code>🏛️ 데블스 원작 룰</code> vs <code>🎲 랜덤 룰 섞기</code> 선택 + 종목별
-              <strong>비밀 룰 네모 가림(🔒) → 매 라운드 1개씩 공개</strong> + 실제 주가 히스토리 꺾은선 차트
-            </li>
-            <li><strong>〈히든 워드〉 Gemini 2.5 Flash 한국어 3축 관계 AI</strong> 활성화 (<code>thinkingBudget: 0</code>)</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.3</div>
-          <ul>
-            <li><strong>〈히든 워드〉 원작 룰 전면 리뉴얼!</strong> (한글 명사 5개 봉투 선택 → 힌트 유사도 % 실시간 공개 → 95%↑ 조기종료 → 동시 추리)</li>
-            <li><strong>Gemini Embedding AI (`GEMINI_API_KEY`)</strong> 연동 지원 + 키 미설정 시 내장 한국어 유사도 자동 폴백</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.2</div>
-          <ul>
-            <li><strong>4·5일차 4개 게임 일괄 멀티플레이 구현!</strong> (<code>경매 빙고</code> · <code>벽바둑 2</code> · <code>히든 워드</code>
-              · <code>수식의 탑</code>)</li>
-            <li>각 게임 전용 SVG 아이콘·시그니처 테마·보드 그래픽 적용 · <strong>12 / 23 (52%)</strong> 돌파!</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.1</div>
-          <ul>
-            <li><strong>게임별 전용 SVG 엠블럼 &amp; 시그니처 컬러 테마</strong> 전면 적용</li>
-            <li><strong>러시안 룰렛 원형 16약실 리볼버 실린더 SVG</strong> · <strong>미스터리 거래소 미니 주가 차트</strong> · <strong>무거운 13 위험
-                게이지</strong> · <strong>양자택일 과반수 줄다리기 바</strong> · <strong>보석 암시장 컷팅 주얼 카드</strong> 적용</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v3.0</div>
-          <ul>
-            <li><strong>구현된 8개 게임 전체 멀티플레이(100%) 지원!</strong></li>
-            <li><code>양자택일·무거운13·미스터리거래소·러시안룰렛·보석암시장·돼지저금통</code> 모두 방 코드/초대 링크(<code>?mp_room=</code>)·AI 추가/제거·7일
-              저장·새로고침 복구 지원</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v2.6</div>
-          <ul>
-            <li><strong>3일차 메인매치 〈보석 암시장〉</strong> 구현 완료 (보석/폭탄 교환 + <strong>마니또 곱셈 점수</strong> 심리전)</li>
-            <li><strong>3일차 감옥매치 〈돼지 저금통〉</strong> 구현 완료 (5개 저금통 흑/백 동전 암기 &amp; 의심 5점 선취전)</li>
-            <li>Party Deck 구현 현황 <strong>8 / 23</strong> 달성!</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v2.5</div>
-          <ul>
-            <li><strong>〈수식 신호등〉 1:1 서로 비밀 수식 출제 모드</strong> 구현! (각자 상대가 맞힐 9칸 수식을 직접 출제하거나 랜덤 추천 후 서로의 수식을 추리)</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v2.4</div>
-          <ul>
-            <li><strong>〈수식 신호등〉 친구 초대 1:1 멀티플레이</strong> 구현 (방 코드 생성·초대 링크·실시간 상대 신호등 중계)</li>
-            <li><strong>〈수식 신호등〉 스와이프 애니메이션 규칙 &amp; 시뮬레이션 가이드</strong> 추가</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v2.3</div>
-          <ul>
-            <li><strong>결승전 3회전 〈수식 신호등〉</strong> 구현 완료! (9칸 등식 추리 · <code>^</code> 제곱 포함 · 🟩🟨🟥 신호등 판정 · 솔로 &amp; 결승
-              1:1 AI 대결)</li>
-            <li>Party Deck 구현 현황 <strong>6 / 23</strong> 달성!</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v2.2</div>
-          <ul>
-            <li><strong>HIT, STAY 레이즈 한도 원작 룰 적용</strong> — 5칩 제한 해제, 최소 칩 보유자 잔액까지 자유 슬라이더 &amp; <strong>최대/올인</strong>
-              베팅 지원</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v2.1</div>
-          <ul>
-            <li><strong>오른쪽 스마트 카드 카운터</strong> 상시 패널 추가 (실시간 HIT 생존/버스트/적중 확률 &amp; AI 추천)</li>
-            <li><strong>2일차 메인매치 〈미스터리 거래소〉</strong> &amp; <strong>감옥매치 〈러시안 룰렛〉</strong> 구현 완료</li>
-            <li>Party Deck 구현 현황 <strong>5 / 23</strong> 달성!</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v2.0</div>
-          <ul>
-            <li><strong>1일차 메인매치 〈양자택일〉</strong> 구현 완료 (6라운드 협력/배신 심리전)</li>
-            <li><strong>1일차 감옥매치 〈무거운 13〉</strong> 구현 완료 (14라운드 바위·칩·임계점 13 전략전)</li>
-            <li>Party Deck 구현 현황 <strong>3 / 23</strong> 달성!</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.9</div>
-          <ul>
-            <li><strong>Party Deck 게임 종합 허브</strong> 메인 페이지 추가 (23개 게임 목록 &amp; 구현도 표시)</li>
-            <li>카테고리 필터(메인·감옥·결승·유배지) 및 준비 중 게임 미리보기 모달 지원</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.8</div>
-          <ul>
-            <li><strong>AI 인원 자유 선택</strong> (1인 플레이: AI 1~4명 선택, 멀티 대기실: 방장이 AI 1명씩 추가/제거 가능)</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.7</div>
-          <ul>
-            <li><strong>한계 숫자(5~12)</strong>가 <strong>매 라운드마다</strong> 주사위로 새로 결정되도록 변경</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.6</div>
-          <ul>
-            <li><strong>방장 게임 종료(🏁)</strong> &amp; <strong>게임 저장/이어하기(💾)</strong> 추가 (7일 보관)</li>
-            <li>순서별 <strong>효과음(SFX)</strong> 추가 (내 차례·카드·칩 베팅·레이즈·승리·버스트 + 음소거 토글)</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.5</div>
-          <ul>
-            <li>전용 골드 카드 파비콘(Favicon) &amp; 카톡/메신저 링크 미리보기(OG) 추가</li>
-            <li>중복 클릭 방지 &amp; 모바일 폴링 안정화 적용</li>
-            <li>라이브 Vercel + Upstash Redis R/W 정상 검증 완료</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.4</div>
-          <ul>
-            <li>왼쪽 패치노트 &amp; 실시간 기능 상태판 추가</li>
-            <li>Redis 쓰기 권한(Read-Only 토큰) 자동 진단</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.3</div>
-          <ul>
-            <li>멀티플레이 대기실 <strong>방장 / 참가자</strong> 구분 배지 &amp; 5인 슬롯 표시</li>
-            <li>방 코드 복사 &amp; 초대 링크 복사 분리</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.2</div>
-          <ul>
-            <li>6단계 스와이프 애니메이션 규칙 가이드 추가</li>
-            <li>주사위·카드 플립·HIT/STAY·1라운드 자동 시뮬레이션 구현</li>
-          </ul>
-        </div>
-        <div class="patch-item">
-          <div class="patch-ver">v1.1</div>
-          <ul>
-            <li>Vercel 서버리스 + Upstash Redis + HTTP Polling 구조 전환</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </aside>
-
   <!-- RIGHT SMART CARD COUNTER SIDEBAR (HIT, STAY) -->
   <aside id="right-counter-panel" class="right-counter-panel hidden">
     <div class="patch-head">
@@ -336,21 +58,52 @@
   </aside>
 
   <div id="app">
+    <!-- LOGIN / AUTH LANDING SCREEN -->
+    <section id="screen-auth" class="screen active">
+      <div class="auth-wrap">
+        <div class="brand-header">
+          <div class="eyebrow">THE DEVIL'S PLAN : DEAD AGAIN</div>
+          <h1 class="hub-title">PARTY DECK</h1>
+          <p class="brand-sub">닉네임으로 입장하고 승률과 랭킹을 기록하세요</p>
+        </div>
+
+        <div class="glass-card auth-card">
+          <label class="field-label" for="auth-nick">플레이어 닉네임</label>
+          <input id="auth-nick" class="text-input" maxlength="12" placeholder="예: 민우" autocomplete="nickname" />
+
+          <div id="auth-admin-box" class="hidden">
+            <label class="field-label" for="auth-admin-code" style="display:block;margin-bottom:6px;">🔐 관리자 코드 (로컬 영구 저장)</label>
+            <input id="auth-admin-code" type="password" class="text-input" placeholder="관리자 코드 입력" />
+          </div>
+
+          <div id="auth-error" class="error-msg hidden"></div>
+
+          <button id="btn-auth-login" class="btn btn-gold" type="button">입장하기 ▶</button>
+          <div class="auth-sub-actions">
+            <button id="btn-auth-toggle-admin" class="auth-text-btn" type="button">🔐 관리자 로그인</button>
+            <button id="btn-auth-rankings" class="auth-text-btn" type="button">🏆 랭킹 보기</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- PARTY DECK GAME HUB (MAIN LANDING) -->
-    <section id="screen-hub" class="screen active">
+    <section id="screen-hub" class="screen">
       <div class="hub-header">
         <div class="hub-brand-block">
           <div class="eyebrow">THE DEVIL'S PLAN : DEAD AGAIN</div>
           <h1 class="hub-title">PARTY DECK</h1>
           <p class="brand-sub">모바일·PC 두뇌 서바이벌 게임 종합 갤러리</p>
         </div>
-        <div class="hub-progress-wrap">
-          <div class="hub-progress-meta">
-            <span>전체 게임 구현 현황</span>
-            <strong id="hub-progress-text">16 / 23 구현 완료</strong>
+        <div class="hub-user-bar">
+          <div class="hub-user-info">
+            <span id="hub-user-badge" class="hub-user-name">👤 게스트</span>
+            <span id="hub-user-stats" class="hub-user-meta">0승 · 0전 · 0%</span>
           </div>
-          <div class="hub-progress-bar">
-            <div id="hub-progress-fill" class="hub-progress-fill" style="width:70%"></div>
+          <div class="hub-user-actions">
+            <button id="btn-hub-rankings" type="button" class="hub-pill-btn gold">🏆 랭킹</button>
+            <button id="btn-hub-admin-status" type="button" class="hub-pill-btn hidden">🛡️ 서버</button>
+            <button id="btn-hub-logout" type="button" class="hub-pill-btn">로그아웃</button>
           </div>
         </div>
       </div>
@@ -1236,12 +989,61 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=4.5"></script>
-  <script src="/static/games_day1.js?v=4.5"></script>
-  <script src="/static/games_day2.js?v=4.5"></script>
-  <script src="/static/games_day3.js?v=4.5"></script>
-  <script src="/static/games_final.js?v=4.5"></script>
-  <script src="/static/mp_hub.js?v=4.5"></script>
+  <!-- RANKINGS & STATS MODAL -->
+  <div id="modal-rankings" class="modal hidden">
+    <div class="modal-card rank-modal-card">
+      <div class="modal-head">
+        <h3>🏆 플레이어 랭킹 &amp; 전적</h3>
+        <button type="button" class="icon-btn" onclick="document.getElementById('modal-rankings').classList.add('hidden')">✕</button>
+      </div>
+      <div id="rank-my-summary" class="rank-my-summary hidden"></div>
+      <div tabindex="0" role="region" aria-label="플레이어 순위표" class="rank-table-wrap">
+        <table class="rank-table">
+          <thead>
+            <tr>
+              <th scope="col">순위</th>
+              <th scope="col">닉네임</th>
+              <th scope="col">승리</th>
+              <th scope="col">판수</th>
+              <th scope="col">승률</th>
+              <th scope="col">연승</th>
+              <th scope="col">점수</th>
+            </tr>
+          </thead>
+          <tbody id="rank-table-body"></tbody>
+        </table>
+      </div>
+      <div id="rank-admin-bar" class="rank-admin-bar hidden">
+        <button id="btn-admin-reset-rank" type="button" class="icon-btn danger">🗑️ 랭킹 전체 초기화 (관리자)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN LIVE SERVER STATUS MODAL -->
+  <div id="modal-admin-status" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>🛡️ 관리자 실시간 서버 상태</h3>
+        <button type="button" class="icon-btn" onclick="document.getElementById('modal-admin-status').classList.add('hidden')">✕</button>
+      </div>
+      <ul class="status-list" id="live-status-list">
+        <li><span>웹 서버</span><span class="st-badge ok" id="st-server">확인 중</span></li>
+        <li><span>Redis 저장소 (쓰기)</span><span class="st-badge warn" id="st-redis">확인 중</span></li>
+        <li><span>⚡ Firebase 실시간</span><span class="st-badge warn" id="st-firebase">확인 중</span></li>
+        <li><span>🧠 Gemini AI 유사도</span><span class="st-badge warn" id="st-gemini">확인 중</span></li>
+        <li><span>🤖 1인 AI 대전</span><span class="st-badge ok" id="st-solo">정상</span></li>
+        <li><span>👑 멀티플레이 방/초대</span><span class="st-badge ok" id="st-multi">정상</span></li>
+      </ul>
+      <div id="st-redis-hint" class="status-hint hidden"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=5.0"></script>
+  <script src="/static/games_day1.js?v=5.0"></script>
+  <script src="/static/games_day2.js?v=5.0"></script>
+  <script src="/static/games_day3.js?v=5.0"></script>
+  <script src="/static/games_final.js?v=5.0"></script>
+  <script src="/static/mp_hub.js?v=5.0"></script>
 </body>
 
 </html>

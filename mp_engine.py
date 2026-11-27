@@ -2223,3 +2223,82 @@ def serialize_mp_room(room: dict, viewer_id: str) -> dict:
         "ai_pending": bool(float(room.get("ai_next_at") or 0.0) > 0.0 and room["phase"] == "PLAYING"),
         "solo_mode": all(p["is_ai"] for p in ps if p["id"] != viewer_id),
     }
+
+
+def mp_determine_winners(room: dict) -> List[dict]:
+    """Return human participant results [{"name", "won", "score"}] when a room is DONE."""
+    gt = room.get("game_type", "")
+    ps = room.get("players", [])
+    st = room.get("state", {})
+    if not ps:
+        return []
+    win_ids = set()
+    score_map: Dict[str, float] = {}
+
+    if gt in ("choice", "gem_market", "hidden_word", "piggy_bank", "gradation", "card_janggi", "color_link"):
+        if gt == "gem_market":
+            for p in ps:
+                m_idx = p.get("manitto_idx", 0)
+                m_pts = ps[m_idx].get("pts", 0) if 0 <= m_idx < len(ps) else 0
+                score_map[p["id"]] = p.get("pts", 0) * m_pts
+        else:
+            for p in ps:
+                score_map[p["id"]] = float(p.get("score", 0))
+        top = max(score_map.values())
+        win_ids = {pid for pid, sc in score_map.items() if sc == top}
+        # Fallback if scores are tied (e.g. card_janggi / color_link single winner in banner)
+        if len(win_ids) > 1:
+            banner = room.get("banner", "")
+            named = {p["id"] for p in ps if p["name"] in banner}
+            if named:
+                win_ids = named
+    elif gt == "heavy_13":
+        for p in ps:
+            score_map[p["id"]] = -float(p.get("penalty", 0))
+        top = max(score_map.values())
+        win_ids = {pid for pid, sc in score_map.items() if sc == top}
+    elif gt == "mystery_exchange":
+        stocks = st.get("stocks", [])
+        for p in ps:
+            tot = p.get("cash", 0) + sum(p.get("holdings", {}).get(s["id"], 0) * s["price"] for s in stocks)
+            score_map[p["id"]] = float(tot)
+        top = max(score_map.values())
+        win_ids = {pid for pid, sc in score_map.items() if sc == top}
+    elif gt == "russian_roulette":
+        for p in ps:
+            alive = not p.get("dead", False)
+            score_map[p["id"]] = 1.0 if alive else 0.0
+            if alive:
+                win_ids.add(p["id"])
+    elif gt == "auction_bingo":
+        for p in ps:
+            score_map[p["id"]] = float(p.get("lines", 0))
+        top = max(score_map.values())
+        win_ids = {pid for pid, sc in score_map.items() if sc == top}
+    elif gt == "wall_go_2":
+        for p in ps:
+            score_map[p["id"]] = float(p.get("territory", 0))
+        top = max(score_map.values())
+        win_ids = {pid for pid, sc in score_map.items() if sc == top}
+    elif gt == "formula_tower":
+        for p in ps:
+            score_map[p["id"]] = float(p.get("tower", 0))
+        top = max(score_map.values())
+        win_ids = {pid for pid, sc in score_map.items() if sc == top}
+    elif gt == "secret_code":
+        for p in ps:
+            st_turn = p.get("solved_turn")
+            score_map[p["id"]] = float(100 - st_turn) if st_turn else 0.0
+        top = max(score_map.values())
+        if top > 0:
+            win_ids = {pid for pid, sc in score_map.items() if sc == top}
+
+    out = []
+    for p in ps:
+        if not p.get("is_ai"):
+            out.append({
+                "name": p.get("name", ""),
+                "won": p["id"] in win_ids,
+                "score": score_map.get(p["id"], 0.0),
+            })
+    return out

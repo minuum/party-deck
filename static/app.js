@@ -906,8 +906,180 @@ $("btn-rules").onclick = () => {
 // ---------------------------------------------------------------------------
 // Left Patch Notes & Live Health Status
 // ---------------------------------------------------------------------------
-$("btn-patch-toggle").onclick = () => $("patch-panel").classList.toggle("open");
-$("btn-patch-close").onclick = () => $("patch-panel").classList.remove("open");
+// ---------------------------------------------------------------------------
+// Auth (Login / Admin Auto-Restore / Logout) & Player Rankings
+// ---------------------------------------------------------------------------
+const AUTH_KEY = "pd_auth_v1";
+let currentAuth = null;
+
+function syncNicknameInputs(nick) {
+  ["input-name", "mp-name", "fl-name"].forEach((id) => {
+    const el = $(id);
+    if (el && nick) el.value = nick;
+  });
+}
+
+function updateHubUserBar() {
+  const badge = $("hub-user-badge");
+  const meta = $("hub-user-stats");
+  const adminBtn = $("btn-hub-admin-status");
+  if (!currentAuth) return;
+  if (badge) {
+    badge.textContent = currentAuth.is_admin ? `👑 ${currentAuth.nickname} (관리자)` : `👤 ${currentAuth.nickname}`;
+  }
+  const st = currentAuth.stats || {};
+  if (meta) {
+    meta.textContent = `${st.wins || 0}승 · ${st.games || 0}전 · ${st.win_rate || 0}%`;
+  }
+  if (adminBtn) adminBtn.classList.toggle("hidden", !currentAuth.is_admin);
+}
+
+async function performLogin(nickname, adminCode = "", adminToken = "", silent = false) {
+  const errEl = $("auth-error");
+  if (errEl) errEl.classList.add("hidden");
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nickname, admin_code: adminCode, admin_token: adminToken }),
+    });
+    const out = await res.json();
+    if (!res.ok || out.error) {
+      if (!silent && errEl) {
+        errEl.textContent = out.error || "로그인 실패";
+        errEl.classList.remove("hidden");
+      }
+      return false;
+    }
+    currentAuth = {
+      nickname: out.nickname,
+      is_admin: !!out.is_admin,
+      admin_token: out.admin_token || "",
+      stats: out.stats || {},
+    };
+    localStorage.setItem(AUTH_KEY, JSON.stringify({
+      nickname: currentAuth.nickname,
+      is_admin: currentAuth.is_admin,
+      admin_token: currentAuth.admin_token,
+    }));
+    syncNicknameInputs(currentAuth.nickname);
+    updateHubUserBar();
+    // Handle invite URL or go to hub
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("room")) showScreen("home");
+    else if (!p.get("mp_room") && !p.get("fl_room")) showScreen("hub");
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function logoutUser() {
+  localStorage.removeItem(AUTH_KEY);
+  currentAuth = null;
+  if ($("auth-nick")) $("auth-nick").value = "";
+  if ($("auth-admin-code")) $("auth-admin-code").value = "";
+  showScreen("auth");
+}
+
+async function openRankingsModal() {
+  const modal = $("modal-rankings");
+  const body = $("rank-table-body");
+  const myBox = $("rank-my-summary");
+  const adminBar = $("rank-admin-bar");
+  if (!modal || !body) return;
+  modal.classList.remove("hidden");
+  body.innerHTML = `<tr><td colspan="7" class="muted">랭킹 불러오는 중...</td></tr>`;
+  if (adminBar) adminBar.classList.toggle("hidden", !(currentAuth && currentAuth.is_admin));
+
+  try {
+    const nick = currentAuth ? currentAuth.nickname : "";
+    const res = await fetch(`/api/rankings?nickname=${encodeURIComponent(nick)}`);
+    const data = await res.json();
+    if (data.me && myBox) {
+      myBox.classList.remove("hidden");
+      myBox.innerHTML = `
+        <div class="rank-stat-box"><span>내 순위</span><strong>#${data.me.rank}</strong></div>
+        <div class="rank-stat-box"><span>승리 / 판수</span><strong>${data.me.wins}승 ${data.me.games}전</strong></div>
+        <div class="rank-stat-box"><span>승률</span><strong>${data.me.win_rate}%</strong></div>
+        <div class="rank-stat-box"><span>최고 연승</span><strong>🔥 ${data.me.best_streak}</strong></div>
+      `;
+    } else if (myBox) {
+      myBox.classList.add("hidden");
+    }
+    const rows = data.rankings || [];
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="7" class="muted">아직 기록된 전적이 없습니다. 첫 승리를 기록해보세요!</td></tr>`;
+      return;
+    }
+    body.innerHTML = rows.map((r) => {
+      const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank;
+      const isMe = nick && r.name === nick;
+      return `<tr class="${isMe ? "is-me" : ""}">
+        <td>${medal}</td>
+        <td>${r.name}${isMe ? " (나)" : ""}</td>
+        <td><strong>${r.wins}</strong></td>
+        <td>${r.games}</td>
+        <td>${r.win_rate}%</td>
+        <td>${r.streak > 0 ? `🔥${r.streak}` : "-"}</td>
+        <td>${r.points}</td>
+      </tr>`;
+    }).join("");
+  } catch (_) {
+    body.innerHTML = `<tr><td colspan="7" class="muted">랭킹을 불러오지 못했습니다.</td></tr>`;
+  }
+}
+
+if ($("btn-auth-toggle-admin")) {
+  $("btn-auth-toggle-admin").onclick = () => $("auth-admin-box").classList.toggle("hidden");
+}
+if ($("btn-auth-login")) {
+  $("btn-auth-login").onclick = () => {
+    const nick = ($("auth-nick")?.value || "").trim();
+    const code = ($("auth-admin-code")?.value || "").trim();
+    performLogin(nick, code, "", false);
+  };
+}
+if ($("auth-nick")) {
+  $("auth-nick").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("btn-auth-login")?.click();
+  });
+}
+if ($("btn-auth-rankings")) $("btn-auth-rankings").onclick = openRankingsModal;
+if ($("btn-hub-rankings")) $("btn-hub-rankings").onclick = openRankingsModal;
+if ($("btn-hub-logout")) $("btn-hub-logout").onclick = logoutUser;
+if ($("btn-hub-admin-status")) {
+  $("btn-hub-admin-status").onclick = () => {
+    checkLiveStatus();
+    $("modal-admin-status").classList.remove("hidden");
+  };
+}
+if ($("btn-admin-reset-rank")) {
+  $("btn-admin-reset-rank").onclick = async () => {
+    if (!currentAuth?.is_admin || !confirm("정말 모든 플레이어 랭킹을 초기화할까요?")) return;
+    const res = await fetch("/api/admin/reset_rankings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ admin_token: currentAuth.admin_token }),
+    });
+    if (res.ok) {
+      if (typeof showToast === "function") showToast("🗑️ 랭킹이 초기화되었습니다.");
+      openRankingsModal();
+    }
+  };
+}
+
+// Auto-restore saved login (Admin or User) on load
+(async function initAuth() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+    if (saved && saved.nickname) {
+      const ok = await performLogin(saved.nickname, "", saved.admin_token || "", true);
+      if (ok) return;
+    }
+  } catch (_) {}
+  showScreen("auth");
+})();
 
 async function checkLiveStatus() {
   try {
@@ -1318,9 +1490,6 @@ function openGameInfoSheet(g) {
 function renderHub() {
   const grid = $("hub-games-grid");
   if (!grid) return;
-  const playableCnt = GAME_CATALOG.filter((g) => g.playable).length;
-  $("hub-progress-text").textContent = `${playableCnt} / ${GAME_CATALOG.length} 구현 완료`;
-  $("hub-progress-fill").style.width = `${Math.max(5, Math.round((playableCnt / GAME_CATALOG.length) * 100))}%`;
 
   const filtered = GAME_CATALOG.filter((g) => {
     if (currentHubCat === "all") return true;

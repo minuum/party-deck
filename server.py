@@ -259,6 +259,7 @@ class GameRoom:
         self.logs: List[str] = []
         self.winner_info: Optional[dict] = None
         self.next_ai_at: float = 0.0
+        self.stats_recorded: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -280,6 +281,7 @@ class GameRoom:
             "logs": self.logs,
             "winner_info": self.winner_info,
             "next_ai_at": self.next_ai_at,
+            "stats_recorded": getattr(self, "stats_recorded", False),
         }
 
     @classmethod
@@ -300,6 +302,7 @@ class GameRoom:
         r.logs = d.get("logs", [])
         r.winner_info = d.get("winner_info")
         r.next_ai_at = d.get("next_ai_at", 0.0)
+        r.stats_recorded = d.get("stats_recorded", False)
         return r
 
     def add_log(self, msg: str):
@@ -437,6 +440,7 @@ class GameRoom:
         self.round_num = 0
         self.carry_pot = 0
         self.lead_idx = -1
+        self.stats_recorded = False
         self.logs = []
         self.add_log("게임이 시작되었습니다! 행운을 빕니다.")
         self.start_next_round()
@@ -843,6 +847,157 @@ async def favicon():
     return FileResponse(os.path.join(STATIC_DIR, "favicon.svg"), media_type="image/svg+xml")
 
 
+import hashlib
+
+ADMIN_CODE = os.environ.get("ADMIN_CODE", "minu-admin").strip()
+STATS_KEY = "hs:stats:users"
+
+
+def _admin_token() -> str:
+    return hashlib.sha256(f"pd-admin:{ADMIN_CODE}".encode("utf-8")).hexdigest()[:32]
+
+
+def _load_stats() -> dict:
+    raw = None
+    if STORE.use_redis:
+        try:
+            raw = STORE._redis_cmd("GET", STATS_KEY)
+        except Exception:
+            raw = None
+    else:
+        raw = STORE.local.get(STATS_KEY)
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_stats(stats: dict):
+    raw = json.dumps(stats, ensure_ascii=False)
+    if STORE.use_redis:
+        try:
+            STORE._redis_cmd("SET", STATS_KEY, raw)
+        except Exception:
+            pass
+    else:
+        STORE.local[STATS_KEY] = raw
+
+
+def record_user_match_results(game_type: str, game_title: str, participants: List[dict]):
+    if not participants:
+        return
+    stats = _load_stats()
+    now_ts = int(time.time())
+    for item in participants:
+        name = (item.get("name") or "").strip()[:16]
+        if not name:
+            continue
+        u = stats.get(name) or {
+            "name": name,
+            "games": 0,
+            "wins": 0,
+            "streak": 0,
+            "best_streak": 0,
+            "points": 0,
+            "last_played": now_ts,
+            "by_game": {},
+        }
+        won = bool(item.get("won"))
+        u["games"] += 1
+        if won:
+            u["wins"] += 1
+            u["streak"] += 1
+            if u["streak"] > u["best_streak"]:
+                u["best_streak"] = u["streak"]
+            u["points"] += 10
+        else:
+            u["streak"] = 0
+            u["points"] += 2
+        u["last_played"] = now_ts
+        bg = u["by_game"].get(game_type) or {"title": game_title, "games": 0, "wins": 0}
+        bg["title"] = game_title
+        bg["games"] += 1
+        if won:
+            bg["wins"] += 1
+        u["by_game"][game_type] = bg
+        stats[name] = u
+    _save_stats(stats)
+
+
+def format_rankings(stats: Optional[dict] = None) -> List[dict]:
+    st = stats if stats is not None else _load_stats()
+    rows = []
+    for name, u in st.items():
+        g = max(0, int(u.get("games", 0)))
+        w = max(0, int(u.get("wins", 0)))
+        wr = round((w / g) * 100, 1) if g > 0 else 0.0
+        by_game = u.get("by_game", {})
+        fav = "-"
+        if by_game:
+            top_g = max(by_game.values(), key=lambda x: (x.get("wins", 0), x.get("games", 0)))
+            fav = f"{top_g.get('title', '')} ({top_g.get('wins', 0)}승)"
+        rows.append({
+            "name": name,
+            "games": g,
+            "wins": w,
+            "win_rate": wr,
+            "streak": int(u.get("streak", 0)),
+            "best_streak": int(u.get("best_streak", 0)),
+            "points": int(u.get("points", 0)),
+            "last_played": int(u.get("last_played", 0)),
+            "fav_game": fav,
+        })
+    rows.sort(key=lambda r: (r["wins"], r["points"], r["win_rate"], r["games"]), reverse=True)
+    for idx, r in enumerate(rows, start=1):
+        r["rank"] = idx
+    return rows
+
+
+@app.post("/api/auth/login")
+async def auth_login(payload: dict):
+    nick = (payload.get("nickname") or "").strip()[:12]
+    admin_code = (payload.get("admin_code") or "").strip()
+    admin_token_in = (payload.get("admin_token") or "").strip()
+    if not nick:
+        return JSONResponse({"error": "닉네임을 입력하세요."}, status_code=400)
+    expected_tok = _admin_token()
+    is_admin = False
+    if admin_token_in and admin_token_in == expected_tok:
+        is_admin = True
+    elif admin_code:
+        if admin_code != ADMIN_CODE:
+            return JSONResponse({"error": "관리자 코드가 올바르지 않습니다."}, status_code=403)
+        is_admin = True
+    stats = _load_stats()
+    my_row = next((r for r in format_rankings(stats) if r["name"] == nick), None)
+    return JSONResponse({
+        "ok": True,
+        "nickname": nick,
+        "is_admin": is_admin,
+        "admin_token": expected_tok if is_admin else "",
+        "stats": my_row or {"name": nick, "games": 0, "wins": 0, "win_rate": 0.0, "streak": 0, "best_streak": 0, "points": 0, "rank": None, "fav_game": "-"},
+    })
+
+
+@app.get("/api/rankings")
+async def get_rankings(nickname: str = ""):
+    rows = format_rankings()
+    me = next((r for r in rows if r["name"] == nickname.strip()), None) if nickname.strip() else None
+    return JSONResponse({"rankings": rows[:100], "total_players": len(rows), "me": me})
+
+
+@app.post("/api/admin/reset_rankings")
+async def admin_reset_rankings(payload: dict):
+    tok = (payload.get("admin_token") or "").strip()
+    if tok != _admin_token():
+        return JSONResponse({"error": "관리자 권한이 필요합니다."}, status_code=403)
+    _save_stats({})
+    return JSONResponse({"ok": True})
+
+
 @app.get("/api/health")
 async def health():
     redis_ok, redis_write_ok, redis_detail = STORE.ping()
@@ -901,6 +1056,11 @@ async def join_room(payload: dict):
 
         player_id = f"p_{random.randint(10000, 99999)}"
         room.players.append(Player(id=player_id, name=name, is_ai=False, chips=room.starting_chips))
+        if room.phase == "GAME_OVER" and not room.stats_recorded:
+            winners = set((room.winner_info or {}).get("winners", []))
+            parts = [{"name": p.name, "won": p.name in winners, "score": p.chips} for p in room.players if not p.is_ai]
+            record_user_match_results("hit_stay", "HIT, STAY", parts)
+            room.stats_recorded = True
         STORE.save_room(room)
         notify_firebase_signal(f"hs_{room_id}")
         return JSONResponse({"room_id": room_id, "player_id": player_id})
@@ -921,6 +1081,11 @@ async def get_room_state(room_id: str, player_id: str):
             try:
                 room = STORE.get_room(room_id) or room
                 if room.step_ai_if_due():
+                    if room.phase == "GAME_OVER" and not room.stats_recorded:
+                        winners = set((room.winner_info or {}).get("winners", []))
+                        parts = [{"name": p.name, "won": p.name in winners, "score": p.chips} for p in room.players if not p.is_ai]
+                        record_user_match_results("hit_stay", "HIT, STAY", parts)
+                        room.stats_recorded = True
                     STORE.save_room(room)
                     notify_firebase_signal(f"hs_{room_id}")
             finally:
@@ -972,6 +1137,11 @@ async def post_action(room_id: str, payload: dict):
             STORE.save_room(room, ttl=604800)
             return JSONResponse({"type": "state", "saved": True, "data": room.serialize_for(player_id)})
 
+        if room.phase == "GAME_OVER" and not room.stats_recorded:
+            winners = set((room.winner_info or {}).get("winners", []))
+            parts = [{"name": p.name, "won": p.name in winners, "score": p.chips} for p in room.players if not p.is_ai]
+            record_user_match_results("hit_stay", "HIT, STAY", parts)
+            room.stats_recorded = True
         STORE.save_room(room)
         notify_firebase_signal(f"hs_{room_id}")
         return JSONResponse({"type": "state", "data": room.serialize_for(player_id)})
@@ -1209,6 +1379,12 @@ async def fl_guess(room_id: str, payload: dict):
             room["winner_id"] = p1["id"]
             room["winner_name"] = p1["name"]
 
+    if room["phase"] == "DONE" and not room.get("stats_recorded"):
+        wid = room.get("winner_id")
+        parts = [{"name": p["name"], "won": (wid == p["id"] or wid == "DRAW"), "score": 1 if wid == p["id"] else 0} for p in room["players"]]
+        record_user_match_results("formula_light", "수식 신호등", parts)
+        room["stats_recorded"] = True
+
     STORE.set_json(key, room)
     notify_firebase_signal(f"fl_{room_id.upper()}")
     return JSONResponse({"data": fl_serialize(room, pid)})
@@ -1227,6 +1403,7 @@ async def fl_restart(room_id: str, payload: dict):
     room["round_num"] = 1
     room["winner_id"] = None
     room["winner_name"] = None
+    room["stats_recorded"] = False
     for p in room["players"]:
         p["guesses"] = []
         p["secret"] = ""
@@ -1297,6 +1474,10 @@ async def mp_get(room_id: str, player_id: str):
     if not any(p["id"] == player_id for p in room["players"]):
         return JSONResponse({"error": "권한이 없습니다."}, status_code=403)
     if mp_engine.maybe_step_mp_ai(room):
+        if room["phase"] == "DONE" and not room.get("stats_recorded"):
+            title = mp_engine.GAME_META[room["game_type"]]["title"]
+            record_user_match_results(room["game_type"], title, mp_engine.mp_determine_winners(room))
+            room["stats_recorded"] = True
         STORE.set_json(key, room)
         notify_firebase_signal(f"mp_{room_id.upper()}")
     return JSONResponse({"data": mp_engine.serialize_mp_room(room, player_id)})
@@ -1315,6 +1496,10 @@ async def mp_action(room_id: str, payload: dict):
     err = mp_engine.handle_mp_action(room, pid, payload)
     if err:
         return JSONResponse({"error": err}, status_code=400)
+    if room["phase"] == "DONE" and not room.get("stats_recorded"):
+        title = mp_engine.GAME_META[room["game_type"]]["title"]
+        record_user_match_results(room["game_type"], title, mp_engine.mp_determine_winners(room))
+        room["stats_recorded"] = True
     STORE.set_json(key, room)
     notify_firebase_signal(f"mp_{room_id.upper()}")
     return JSONResponse({"data": mp_engine.serialize_mp_room(room, pid)})
