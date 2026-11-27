@@ -2643,3 +2643,103 @@ body {
 .cl6-cell.pathC { background: rgba(47, 158, 68, 0.42); border-color: #69db7c; }
 .cl6-cell.pathD { background: rgba(230, 119, 0, 0.42); border-color: #ffd43b; }
 .cl6-cell.pathE { background: rgba(134, 46, 156, 0.42); border-color: #da77f2; }
+
+/* =========================================================================
+   v3.8 STUDIO TABLETOP, REALISTIC PLAYING CARDS & PLAYMAP POLISH
+   ========================================================================= */
+
+/* HIT, STAY Casino Felt Tabletop */
+#screen-game {
+  background: radial-gradient(ellipse at 50% 38%, #12281f 0%, #0b1612 52%, #08080d 100%);
+}
+#screen-game .opponents-grid {
+  background: radial-gradient(ellipse at 50% 50%, rgba(22, 54, 41, 0.55) 0%, rgba(10, 22, 18, 0.7) 100%);
+  border: 1.5px solid rgba(212, 175, 55, 0.35);
+  border-radius: 18px;
+  padding: 9px;
+  box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.65), 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* Realistic Corner-Indexed Playing Cards */
+.play-card {
+  width: 78px;
+  height: 112px;
+  border-radius: 11px;
+  background: linear-gradient(155deg, #23232f 0%, #121219 70%, #0c0c11 100%);
+  border: 1.5px solid rgba(212, 175, 55, 0.68);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 245, 209, 0.22);
+}
+.play-card::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 7px;
+  pointer-events: none;
+}
+.play-card.minus::before {
+  border-color: rgba(235, 87, 87, 0.28);
+}
+.c-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-size: 11px;
+  color: var(--gold-bright);
+  z-index: 2;
+}
+.play-card.minus .c-corner { color: #ff7675; }
+.c-corner i { font-style: normal; font-size: 7px; opacity: 0.75; }
+.c-corner.top { top: 6px; left: 7px; }
+.c-corner.bot { bottom: 6px; right: 7px; transform: rotate(180deg); }
+.c-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.26);
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, transparent 72%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.play-card.minus .c-ring {
+  border-color: rgba(235, 87, 87, 0.35);
+  background: radial-gradient(circle, rgba(235, 87, 87, 0.16) 0%, transparent 72%);
+}
+.play-card .c-val {
+  font-size: 28px;
+}
+
+/* Card Janggi Inlaid Walnut & Brass Board */
+.cj5-grid {
+  background: linear-gradient(155deg, #2c2015 0%, #1a120b 100%);
+  padding: 7px;
+  border-radius: 14px;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.7), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+.cj5-cell {
+  background: rgba(255, 232, 195, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+/* Color Link Luminous Circuit Board */
+.cl6-grid {
+  background: linear-gradient(155deg, #10141f 0%, #090b12 100%);
+  padding: 7px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(56, 217, 169, 0.38);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.75);
+}
+.cl6-cell.colA, .cl6-cell.colB, .cl6-cell.colC, .cl6-cell.colD, .cl6-cell.colE {
+  border-radius: 50%;
+  box-shadow: 0 0 12px currentColor;
+}
+
+/* Gradation 3D Ceramic Tapered Cups */
+.gr7-cup {
+  border-radius: 8px 8px 14px 14px;
+  box-shadow: inset 0 3px 6px rgba(255, 255, 255, 0.16), 0 6px 12px rgba(0, 0, 0, 0.5);
+}

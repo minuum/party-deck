@@ -347,8 +347,11 @@ function render() {
       if (c.is_hit) { tagText = "HIT"; tagCls = "hit"; }
       else if (c.public) { tagText = "공개"; tagCls = "public"; }
 
+      const suit = c.value < 0 ? "▼" : "◆";
       card.innerHTML = `
-        <span class="c-val">${c.value}</span>
+        <span class="c-corner top"><b>${c.value}</b><i>${suit}</i></span>
+        <div class="c-ring"><span class="c-val">${c.value}</span></div>
+        <span class="c-corner bot"><b>${c.value}</b><i>${suit}</i></span>
         <span class="c-tag ${tagCls}">${tagText}</span>
       `;
       if (canReveal) {
