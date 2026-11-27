@@ -2039,3 +2039,71 @@ html, body {
 .fl-key.g { background: #1e8449; border-color: #5ee695; color: #fff; }
 .fl-key.y { background: #b7950b; border-color: #f7df8c; color: #111; }
 .fl-key.r { background: rgba(146, 43, 33, 0.55); border-color: rgba(235, 87, 87, 0.45); color: #bbb; opacity: 0.6; }
+
+/* Day 3 Games: 보석 암시장 & 돼지 저금통 */
+.gm-buyer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.gm-buyers {
+  display: flex;
+  gap: 6px;
+}
+.gm-pill {
+  background: rgba(212, 175, 55, 0.2);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  color: var(--gold-bright);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 3px 9px;
+  border-radius: 99px;
+}
+.gm-card {
+  min-width: 78px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: #1b1b26;
+  border: 1.5px solid rgba(212, 175, 55, 0.45);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.gm-card.bomb {
+  background: #36131a;
+  border-color: rgba(235, 87, 87, 0.75);
+  color: #ff8a8a;
+}
+.gm-card.selected {
+  border-color: #fff;
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.6);
+  transform: translateY(-2px);
+}
+.pb-banks {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+.pb-bank {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 11px;
+  padding: 8px 4px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.pb-bank.active {
+  border-color: var(--gold-bright);
+  background: rgba(212, 175, 55, 0.16);
+}
+.pb-bank .pig { font-size: 18px; }

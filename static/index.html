@@ -41,7 +41,15 @@
       <div class="patch-sec-title">최근 패치 내역</div>
       <div class="patch-notes">
         <div class="patch-item latest">
-          <div class="patch-ver">v2.5 <span>방금 전</span></div>
+          <div class="patch-ver">v2.6 <span>방금 전</span></div>
+          <ul>
+            <li><strong>3일차 메인매치 〈보석 암시장〉</strong> 구현 완료 (보석/폭탄 교환 + <strong>마니또 곱셈 점수</strong> 심리전)</li>
+            <li><strong>3일차 감옥매치 〈돼지 저금통〉</strong> 구현 완료 (5개 저금통 흑/백 동전 암기 &amp; 의심 5점 선취전)</li>
+            <li>Party Deck 구현 현황 <strong>8 / 23</strong> 달성!</li>
+          </ul>
+        </div>
+        <div class="patch-item">
+          <div class="patch-ver">v2.5</div>
           <ul>
             <li><strong>〈수식 신호등〉 1:1 서로 비밀 수식 출제 모드</strong> 구현! (각자 상대가 맞힐 9칸 수식을 직접 출제하거나 랜덤 추천 후 서로의 수식을 추리)</li>
           </ul>
@@ -213,6 +221,64 @@
       </div>
 
       <div id="hub-games-grid" class="hub-games-grid"></div>
+    </section>
+
+    <!-- DAY 3 MAIN MATCH: 보석 암시장 -->
+    <section id="screen-gem-market" class="screen">
+      <div class="sub-nav-bar">
+        <button class="back-hub-btn" type="button" onclick="showScreen('hub')">◀ 전체 게임 목록</button>
+        <span class="sub-nav-tag">3일차 메인매치 · 보석 암시장</span>
+      </div>
+      <div class="d1-hud">
+        <span class="round-pill" id="gm-round">R1 / 5</span>
+        <span class="phase-pill" id="gm-manitto" style="color:var(--gold-bright);">🤫 내 마니또: -</span>
+        <span class="chip-pill" style="font-size:11.5px;">내 기본점 <strong id="gm-my-pts">0</strong></span>
+      </div>
+
+      <div class="glass-card" style="padding:10px 12px;gap:8px;margin-bottom:6px;">
+        <div class="gm-buyer-row">
+          <span class="h13-pick-label">🛒 이번 라운드 구매자 매입 보석</span>
+          <div id="gm-buyers" class="gm-buyers"></div>
+        </div>
+        <div id="gm-players" class="d1-score-grid"></div>
+      </div>
+
+      <div class="table-banner" style="margin-bottom:6px;">
+        <div id="gm-banner" class="banner-text">교환할 내 카드 1장과 상대방을 고르세요!</div>
+        <div id="gm-log" class="mini-log">최종 점수 = 내 기본 점수 × 내 마니또 기본 점수!</div>
+      </div>
+
+      <div class="my-area" style="gap:8px;padding:10px;">
+        <div class="h13-pick-label">1. 내 손패 (보낼 카드 1장 선택)</div>
+        <div id="gm-hand" class="h13-row"></div>
+        <div class="h13-pick-label">2. 교환할 상대 선택 (마니또에게 보석을, 적에게 폭탄을!)</div>
+        <div id="gm-targets" class="h13-row"></div>
+        <button type="button" id="btn-gm-trade" class="btn btn-gold" style="padding:11px;" disabled>🤝 교환 및 라운드 정산</button>
+      </div>
+    </section>
+
+    <!-- DAY 3 PRISON MATCH: 돼지 저금통 -->
+    <section id="screen-piggy-bank" class="screen">
+      <div class="sub-nav-bar">
+        <button class="back-hub-btn" type="button" onclick="showScreen('hub')">◀ 전체 게임 목록</button>
+        <span class="sub-nav-tag">3일차 감옥매치 · 돼지 저금통</span>
+      </div>
+      <div class="d1-hud">
+        <span class="round-pill" id="pb-turn">턴 1</span>
+        <span class="phase-pill" id="pb-ask-color">질문: ⚫ 흑 동전</span>
+        <span class="chip-pill" style="font-size:12px;">목표 <strong>5점</strong></span>
+      </div>
+
+      <div id="pb-scores" class="d1-score-grid" style="margin-bottom:6px;"></div>
+
+      <div class="pb-banks" id="pb-banks"></div>
+
+      <div class="table-banner" style="margin:6px 0;">
+        <div id="pb-banner" class="banner-text">모든 저금통은 ⚫1, ⚪1개로 시작합니다!</div>
+        <div id="pb-log" class="mini-log">누가 어떤 저금통에 몇 개 넣었는지 기억하세요!</div>
+      </div>
+
+      <div id="pb-controls" class="my-area" style="gap:8px;padding:10px;"></div>
     </section>
 
     <!-- FINAL ROUND 3: 수식 신호등 -->
@@ -850,6 +916,7 @@
   <script src="/static/app.js"></script>
   <script src="/static/games_day1.js"></script>
   <script src="/static/games_day2.js"></script>
+  <script src="/static/games_day3.js"></script>
   <script src="/static/games_final.js"></script>
 </body>
 </html>

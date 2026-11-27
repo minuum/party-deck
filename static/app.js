@@ -627,6 +627,7 @@ document.querySelectorAll(".close-modal, .modal-backdrop").forEach((el) => {
     $("modal-counter").classList.add("hidden");
     $("modal-rules").classList.add("hidden");
     if ($("modal-coming-soon")) $("modal-coming-soon").classList.add("hidden");
+    if ($("modal-fl-rules")) $("modal-fl-rules").classList.add("hidden");
   });
 });
 
@@ -1082,13 +1083,13 @@ const GAME_CATALOG = [
   { id: "hit_stay", name: "HIT, STAY", cat: "main", catLabel: "메인매치", day: "6일차", progress: 100, playable: true, desc: "35장 숫자 카드와 8면체 주사위 한계 숫자로 승부하는 5인 생존 베팅 게임 (AI 1~4명 & 실시간 멀티플레이)" },
   { id: "choice", name: "양자택일", cat: "main", catLabel: "메인매치", day: "1일차", progress: 100, playable: true, desc: "1일차 메인매치 · 6라운드 공공의 이익 vs 개인의 이익 과반수 심리전 (7인전)" },
   { id: "mystery_exchange", name: "미스터리 거래소", cat: "main", catLabel: "메인매치", day: "2일차", progress: 100, playable: true, desc: "2일차 메인매치 · 7개 종목의 숨겨진 가격 패턴을 파악해 자산을 불리는 10라운드 주식 거래" },
-  { id: "gem_market", name: "보석 암시장", cat: "main", catLabel: "메인매치", day: "3일차", progress: 0, playable: false, desc: "3일차 메인매치 · 보석 경매 및 비밀 거래 심리전" },
+  { id: "gem_market", name: "보석 암시장", cat: "main", catLabel: "메인매치", day: "3일차", progress: 100, playable: true, desc: "3일차 메인매치 · 보석/폭탄 교환 + 비공개 마니또 곱셈 점수로 승부하는 5라운드 심리전" },
   { id: "auction_bingo", name: "경매 빙고", cat: "main", catLabel: "메인매치", day: "4일차", progress: 0, playable: false, desc: "4일차 메인매치 · 경매로 숫자를 낙찰받아 빙고를 완성하는 전략전" },
   { id: "hidden_word", name: "히든 워드", cat: "main", catLabel: "메인매치", day: "5일차", progress: 0, playable: false, desc: "5일차 메인매치 · 숨겨진 단어를 추리하는 언어 추론 게임" },
 
   { id: "heavy_13", name: "무거운 13", cat: "prison", catLabel: "감옥매치", day: "1일차", progress: 100, playable: true, desc: "1일차 감옥매치 · 바위 카드(0~6)와 3색+레인보우 칩으로 임계점 13을 피하는 14라운드 전략전" },
   { id: "russian_roulette", name: "러시안 룰렛", cat: "prison", catLabel: "감옥매치", day: "2일차", progress: 100, playable: true, desc: "2일차 감옥매치 · 16약실·2실탄! 크레딧으로 조사·총구 회전·약실 조작 후 격발 생존전" },
-  { id: "piggy_bank", name: "돼지 저금통", cat: "prison", catLabel: "감옥매치", day: "3일차", progress: 0, playable: false, desc: "3일차 감옥매치 · 칩 분배와 눈치 싸움" },
+  { id: "piggy_bank", name: "돼지 저금통", cat: "prison", catLabel: "감옥매치", day: "3일차", progress: 100, playable: true, desc: "3일차 감옥매치 · 5개 저금통 속 흑/백 동전 개수를 암기하고 의심으로 5점을 선취하는 심리전" },
   { id: "wall_go_2", name: "벽바둑 2", cat: "prison", catLabel: "감옥매치", day: "4일차", progress: 0, playable: false, desc: "4일차 감옥매치 · 벽을 세워 영토를 차지하는 보드 전략전" },
   { id: "formula_tower", name: "수식의 탑", cat: "prison", catLabel: "감옥매치", day: "5일차", progress: 0, playable: false, desc: "5일차 감옥매치 · 연산 카드 조합으로 탑을 쌓는 수리 대결" },
   { id: "gradation", name: "그라데이션", cat: "prison", catLabel: "감옥매치", day: "6일차", progress: 0, playable: false, desc: "6일차 감옥매치 · 순서와 색/수치 배열 추리전" },
@@ -1149,6 +1150,10 @@ function renderHub() {
         startRouletteGame();
       } else if (g.playable && g.id === "formula_light") {
         startFormulaLightGame("duel");
+      } else if (g.playable && g.id === "gem_market") {
+        startGemMarketGame();
+      } else if (g.playable && g.id === "piggy_bank") {
+        startPiggyBankGame();
       } else {
         $("cs-title").textContent = g.name;
         $("cs-cat").textContent = g.catLabel;
